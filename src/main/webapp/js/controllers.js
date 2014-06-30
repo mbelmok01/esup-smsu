@@ -7,7 +7,7 @@ var phoneNumberPatternOne = /^0[67]\d{8}$/;
 var phoneNumberPatternAll = /\s*\b0[67]\d{8}\b\s*/g;
 
 app.filter('array_difference', function (h) {
-    return function (arr1, arr2) { 
+	return function (arr1, arr2) { 
 	return h.array_difference(arr1, arr2);
     };
 });
@@ -19,8 +19,8 @@ app.controller('MainCtrl', function($scope, h, $route, $parse, routes, globals) 
     $scope.wsgroupsURL = globals.wsgroupsURL;
 
     $scope.$watch('loggedUser', function () {
-	$scope.mainVisibleTabs = $.grep(routes.routes, function(e) { 
-	    return e.mainText && (!e.show || $parse(e.show)($scope));
+	$scope.mainVisibleTabs = $.grep(routes.routes, function(e) {
+		return e.mainText && (!e.show || $parse(e.show)($scope));
 	});
     });
 
@@ -33,7 +33,7 @@ app.controller('MainCtrl', function($scope, h, $route, $parse, routes, globals) 
 
     $scope.$on('$routeChangeStart', function () {
 	$scope.loadInProgress = true;
-    });   
+    });  
     $scope.$on('$routeChangeError', function () {
 	$scope.loadInProgress = false;
     });
@@ -68,7 +68,7 @@ app.controller('GroupsDetailCtrl', function($scope, h, $routeParams, $location) 
 
     $scope.wip = {};
     $scope.groupOrUserChoices = [{ key:"group", label:"Groupe" },
-				 { key:"user", label: "Utilisateur" }];
+    { key:"user", label: "Utilisateur" }];
 
     h.getAccounts().then(function (list) {
 	$scope.accounts = list;
@@ -618,6 +618,145 @@ app.controller('SendCtrl', function($scope, h, $location) {
 
     };
 
+});
+
+app.controller('SendNotificationCtrl', function($scope, h, $location) {
+    $scope.wip = {login: null }; // temp
+    $scope.msg = {};
+    
+    // Liste des types de destinataires. On peut envoyer une notification a un groupe (un groupe = plusieurs login) ou a un seul login
+    var allRecipientTypes = ['PUSH_ENVOI_GROUPES', 'PUSH_ENVOI_LOGIN'];
+    $scope.$watch('loggedUser', function () {
+	$scope.recipientTypes = $.grep(allRecipientTypes, function (e) { 
+	    return $scope.loggedUser && $scope.loggedUser.can["FCTN_" + e];
+	});
+	$scope.recipientType = $scope.recipientTypes[0];
+    });
+    
+    // permet de faire un appel rest pour recuprere les groupes 
+    h.callRest('messages/groupLeaves').then(function (groupLeaves) {
+	$scope.groupLeaves = groupLeaves;
+	$scope.msg.senderGroup = groupLeaves[0].id;
+    });
+    
+    // permet de faire un appel rest pour recuperer la liste des services
+    h.callRest('services').then(function (services) {
+	$scope.services = services;
+    });
+    
+    h.callRest('templates').then(function (templates) {
+	$scope.templates = templates;
+    });
+    
+    // cette methode affiche le message suivant un template
+    function computeContent(body, template) {
+	body = body || '';
+	if (template) {
+	    return template.heading + body + template.signature;
+	} else {
+	    return body;
+	}
+    }
+    
+    // cette methode renvoie renvoie un template de message precis
+    $scope.$watch('msg.template', function () {
+	if ($scope.msg.template)
+	    $scope.msg.body = $scope.msg.template.body;
+    });
+    
+    // cette methode retourne le nombre de caractere du message
+    $scope.nbMoreCharsAllowed = function(body) {
+	var content = computeContent(body, $scope.msg.template);
+	content = content.replace(/[\[\]{}\\~^|\u20AC]/g, "xx"); // cf GSM's "Basic Character Set Extension". \u20AC is euro character
+        return 230 - content.length;
+    };
+    
+    // cette methode verifie que le message n'est pas trop long
+    $scope.checkMaxPushLength = function (body) {
+	return $scope.nbMoreCharsAllowed(body) >= 0;
+    };
+    
+    $scope.msg.destLogins = [];
+    
+    // cette methode retourne une liste de login a partir du moment ou l'on a saisi plus de 4 caracteres
+    $scope.searchUser = function (token) {
+	if (token.length < 4) {
+	    $scope.wip.logins = null;
+	    return [];
+	}
+	return h.searchUser(token, { service: $scope.msg.serviceKey })
+	    .then(function (logins) {
+		$scope.wip.logins = logins;
+		return logins;
+	    });
+    };
+    
+    // cette methode retourne une liste de groupe a partir du moment où l'on a saisi plus de 3 caracteres
+    $scope.searchGroup = function (token) {
+	if (token.length < 3) {
+	    $scope.wip.groups = null;
+	    return [];
+	}
+	return h.searchGroup(token)
+	    .then(function (groups) {
+		$scope.wip.groups = groups;
+		return $scope.wip.groups;
+	    });
+    };
+    
+    // cette methode ajoute permet d'ajouter un login : a vérifier
+    $scope.addDestLogin = function () {
+	if ($scope.wsgroupsURL) {
+	    h.get_noSMS($scope.wip.login, { service: $scope.msg.serviceKey });
+	}
+	$scope.msg.destLogins.push($scope.wip.login);
+	$scope.wip.login = null;
+    };
+    
+    // cette methode permet d'ajouter un groupe destinataire
+    $scope.addDestGroup = function () {
+	$scope.msg.destGroup = $scope.wip.group; 
+	$scope.wip.group = null;
+    };
+    
+    // cette methode permet de supprimer un groupe destinataire
+    $scope.removeRecipient = function (e) {
+	var msg = $scope.msg;
+	if (e === msg.destGroup) {
+	    msg.destGroup = null;
+	} else {
+	    h.array_remove_elt(msg.destLogins, e);
+	    h.array_remove_elt(msg.destPhoneNumbers, e);
+	}
+    };
+    
+    // cette methode valide le formulaire
+    $scope.submit = function () {
+
+	function destIds(l) {
+	    var ids = h.array_map(l, function (e) { return e.id; });
+	    return ids.length ? ids : null;
+	}
+	var msg = $scope.msg;
+	
+        var msgToSend = h.objectSlice($scope.msg, ['senderGroup','serviceKey']);
+	
+        msgToSend.content = computeContent(msg.body, msg.template);
+	msgToSend.smsTemplate = msg.template && msg.template.label; // for statistics on templates usage
+	msgToSend.recipientLogins = destIds(msg.destLogins);
+	
+        msgToSend.recipientGroup = msg.destGroup && msg.destGroup.id;
+	
+        console.log("sending...");
+	console.log(msgToSend);
+	h.callRestModify('post', 'messages', msgToSend).then(function (resp) {
+	    var msg = resp.data;
+	    $location.path('messages/' + msg.id);
+	});
+
+    };
+    
+    
 });
 
 app.controller('MessagesCtrl', function($scope, h, $location, $route) {

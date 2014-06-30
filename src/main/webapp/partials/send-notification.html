@@ -1,0 +1,79 @@
+<body>
+    <div class="normalContent">
+        <form novalidate  name="myPushForm" ng-submit="submit()" class="form-horizontal">
+            
+            <!-- type de destinataire -->
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="service">Type de destinataire</label>
+                <div class="col-md-9">
+                    <select name="recipientType" ng-model="recipientType" ng-options="type as type | translate for type in recipientTypes" class="form-control">
+                    </select>
+                </div>
+            </div>
+            
+            <!-- selon le type de destinataire, on retoure la liste des groupes ou un la liste des logins -->
+            <div class="form-group" ng-class="{'has-error': submitted}">
+                <label class="col-md-3 control-label" for="fonctions">Destinataires</label>
+                <div class="col-md-9" ng-switch on="recipientType">
+                    
+                    <!-- si le type de destinataire est un groupe : propose la liste des groupe a partir de 3 caracteres -->
+                    <div ng-switch-when="PUSH_ENVOI_GROUPES">
+                        <div my-autocomplete="group" ng-model="wip.group" class="form-control" do-search="searchGroup($viewValue)" on-select="addDestGroup()"></div>
+                        <span ng-show="wip.groups.length === 0" class="has-error"><span class="help-block">No match</span></span>
+                    </div>
+                    
+                    <!-- si le type de destinataire est un login -->
+                    <div ng-switch-when="PUSH_ENVOI_LOGIN">
+                        <div class="input-group">
+                            <input type="text" name="destLogin" ng-model="wip.phoneNumber" class="form-control">
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" type="button" 
+                                        ng-click="addDestPhoneNumber()">
+                                    <span class="glyphicon glyphicon-plus"></span>
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Template -->
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="template">Modèle</label>
+                <div class="col-md-9">
+                    <select name="template" ng-model="msg.template" ng-options="template as template.label for template in templates" class="form-control">
+                        <option value="" ng-selected="selected">Aucun</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- corps du message a envoyer. on affiche le nombre de caractere restant -->
+            <div class="form-group" ng-class="{'has-error': submitted && myPushForm.body.$invalid || myPushForm.body.$error.maxLength}">
+                <label class="col-md-3 control-label" for="body">Message</label>
+                <div class="col-md-9">
+                    <div class="input-group input-group-long-addons">
+                        <span class="input-group-addon" ng-if="msg.template.heading">
+                            {{msg.template.heading}}
+                        </span>
+                        <textarea type="text" name="body" ng-model="msg.body" rows="4" class="form-control" required my-validator="{ maxLength: checkMaxPushLength }"></textarea>
+                        <span class="input-group-addon" ng-if="msg.template.signature">
+                            {{msg.template.signature}}
+                        </span>
+                    </div>
+                    <span ng-show="submitted && myPushForm.body.$error.required" class="help-block">Required</span>
+                    <span ng-show="submitted && myPushForm.body.$error.maxLength" class="help-block">Message trop long</span>
+                    <span class="help-block">Caractères restants {{nbMoreCharsAllowed(msg.body)}}</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-offset-3 col-md-9">
+                    <button class="btn btn-primary" type="submit">
+                        <span class="glyphicon glyphicon-send"></span>
+                        Envoyer
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

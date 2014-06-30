@@ -32,7 +32,7 @@ myAppTest.run(function($http, $httpBackend, h, $rootScope) {
 
     var consts = {
 	users: {"admin":"The Boss","sender1":"Sender #1","sender2":"Sender #2","user1": "User #1"},
-	allFonctions: ["FCTN_SMS_ENVOI_ADH","FCTN_SMS_ENVOI_GROUPES","FCTN_SMS_ENVOI_NUM_TEL","FCTN_SMS_REQ_LDAP_ADH","FCTN_SMS_AJOUT_MAIL","FCTN_GESTIONS_RESPONSABLES","FCTN_GESTION_ROLES_CRUD","FCTN_GESTION_ROLES_AFFECT","FCTN_GESTION_MODELES","FCTN_GESTION_SERVICES_CP","FCTN_GESTION_QUOTAS","FCTN_SUIVI_ENVOIS_UTIL","FCTN_SUIVI_ENVOIS_ETABL","FCTN_GESTION_GROUPE","FCTN_SMS_ENVOI_LISTE_NUM_TEL"],
+	allFonctions: ["FCTN_SMS_ENVOI_ADH","FCTN_SMS_ENVOI_GROUPES","FCTN_SMS_ENVOI_NUM_TEL","FCTN_SMS_REQ_LDAP_ADH","FCTN_SMS_AJOUT_MAIL","FCTN_GESTIONS_RESPONSABLES","FCTN_GESTION_ROLES_CRUD","FCTN_GESTION_ROLES_AFFECT","FCTN_GESTION_MODELES","FCTN_GESTION_SERVICES_CP","FCTN_GESTION_QUOTAS","FCTN_SUIVI_ENVOIS_UTIL","FCTN_SUIVI_ENVOIS_ETABL","FCTN_GESTION_GROUPE","FCTN_SMS_ENVOI_LISTE_NUM_TEL", "FCTN_PUSH_ENVOI_GROUPES", "FCTN_SMS_ENVOI_LOGIN"],
 	accounts: ["test-univ.fr"],
 	basicGroups: [{"id": "gfoo", "name": "GroupFoo"}, 
 		      {"id": "senders", "name": "All Senders"}],
@@ -52,7 +52,7 @@ myAppTest.run(function($http, $httpBackend, h, $rootScope) {
 		{"id":2,"name":"Default","fonctions":[]},
 		{"id":3,"name":"sender","fonctions":["FCTN_SMS_ENVOI_GROUPES","FCTN_SUIVI_ENVOIS_UTIL","FCTN_SMS_ENVOI_ADH","FCTN_SMS_AJOUT_MAIL"]}],
 	services: [],
- 	templates: [{"id":1,"label":"U","heading":"Foo","body":"","signature":""}],
+ 	templates: [{"id":1,"label":"U","heading":"Foo","body":"","signature":""}, {"id":"2","label":"Modele 1","heading":"Foo","body":"Hello World !","signature":"Bar"}],
 	membership: [{"firstName":"The","lastName":"Boss","phoneNumber":"0601010101","availablePhoneNumbers":[],"phoneNumberValidationCode":null,"validCG":true,"validCP":[],"login":"admin","flagPending":false}],
     };
 
