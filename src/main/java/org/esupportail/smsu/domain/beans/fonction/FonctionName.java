@@ -36,6 +36,10 @@ public enum FonctionName {
 	FCTN_SUIVI_ENVOIS_ETABL,
 	// Manage groups
 	FCTN_GESTION_GROUPE,
+	// Send SMS Logins
+	FCTN_PUSH_ENVOI_LOGIN,
+	// Send PUSH Groups
+	FCTN_PUSH_ENVOI_GROUPES,
 
 	// Approve SMS. Obsoleted by dynamic "isSupervisor" based on table "supervisor"
 	// FCTN_APPROBATION_ENVOI,

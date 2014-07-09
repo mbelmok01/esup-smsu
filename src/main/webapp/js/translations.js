@@ -56,6 +56,8 @@ app.config(function ($translateProvider) {
       SMS_ENVOI_GROUPES         : "Groupe d'utilisateurs",
       SMS_ENVOI_ADH             : "Utilisateur adhérent",
       SMS_ENVOI_NUM_TEL         : "Numéros de téléphone",
+      PUSH_ENVOI_LOGIN          : "Logins d'utilisateurs",
+      PUSH_ENVOI_GROUPES        : "Groupe d'utilisateurs"
   });
   $translateProvider.preferredLanguage('fr');
 });

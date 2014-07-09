@@ -16,64 +16,113 @@
                 <label class="col-md-3 control-label" for="fonctions">Destinataires</label>
                 <div class="col-md-9" ng-switch on="recipientType">
                     
-                    <!-- si le type de destinataire est un groupe : propose la liste des groupe a partir de 3 caracteres -->
-                    <div ng-switch-when="PUSH_ENVOI_GROUPES">
-                        <div my-autocomplete="group" ng-model="wip.group" class="form-control" do-search="searchGroup($viewValue)" on-select="addDestGroup()"></div>
-                        <span ng-show="wip.groups.length === 0" class="has-error"><span class="help-block">No match</span></span>
-                    </div>
-                    
                     <!-- si le type de destinataire est un login -->
                     <div ng-switch-when="PUSH_ENVOI_LOGIN">
-                        <div class="input-group">
-                            <input type="text" name="destLogin" ng-model="wip.phoneNumber" class="form-control">
-                            <span class="input-group-btn">
-                                <button class="btn btn-default" type="button" 
-                                        ng-click="addDestPhoneNumber()">
-                                    <span class="glyphicon glyphicon-plus"></span>
-                                </button>
-                            </span>
-                        </div>
+                        <div my-autocomplete="user" ng-model="wip.login" class="form-control"
+                        do-search="searchUser($viewValue)" 
+                        on-select="addDestLogin()"
+                        >
                     </div>
+                    <span ng-show="wip.logins.length === 0" class="has-error">
+                        <span class="help-block">No match</span>
+                    </span>
                 </div>
-            </div>
-            
-            <!-- Template -->
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="template">Modèle</label>
-                <div class="col-md-9">
-                    <select name="template" ng-model="msg.template" ng-options="template as template.label for template in templates" class="form-control">
-                        <option value="" ng-selected="selected">Aucun</option>
-                    </select>
+                
+                <!-- si le type de destinataire est un groupe : propose la liste des groupe a partir de 3 caracteres -->
+                <div ng-switch-when="PUSH_ENVOI_GROUPES">
+                    <div my-autocomplete="group" ng-model="wip.group" class="form-control" do-search="searchGroup($viewValue)" on-select="addDestGroup()"></div>
+                    <span ng-show="wip.groups.length === 0" class="has-error"><span class="help-block">Aucun résultat</span></span>
                 </div>
+                
+                <ul class="not-inline multiSelectSelected">
+                    <li ng-repeat="e in msg.destLogins">
+                        <a ng-click="removeRecipient(e)">
+                            <span class="glyphicon glyphicon-user"></span>
+                            {{e.name}}
+                            <span class="glyphicon glyphicon-remove"></span>
+                        </a>
+                    </li>
+                    
+                    <li ng-repeat="e in msg.destPhoneNumbers">
+                        <a ng-click="removeRecipient(e)">
+                            <span class="glyphicon glyphicon-earphone"></span>
+                            {{e}}
+                            <span class="glyphicon glyphicon-remove"></span>
+                        </a>
+                    </li>
+                    
+                    <li ng-if="msg.destGroup">
+                        <a ng-click="removeRecipient(msg.destGroup)">
+                            <span class="glyphicon glyphicon-list"></span>
+                            {{msg.destGroup.name}}
+                            <span class="glyphicon glyphicon-remove"></span>
+                        </a>
+                    </li>
+                </ul>
+                
             </div>
-            
-            <!-- corps du message a envoyer. on affiche le nombre de caractere restant -->
-            <div class="form-group" ng-class="{'has-error': submitted && myPushForm.body.$invalid || myPushForm.body.$error.maxLength}">
-                <label class="col-md-3 control-label" for="body">Message</label>
-                <div class="col-md-9">
-                    <div class="input-group input-group-long-addons">
-                        <span class="input-group-addon" ng-if="msg.template.heading">
-                            {{msg.template.heading}}
-                        </span>
-                        <textarea type="text" name="body" ng-model="msg.body" rows="4" class="form-control" required my-validator="{ maxLength: checkMaxPushLength }"></textarea>
-                        <span class="input-group-addon" ng-if="msg.template.signature">
-                            {{msg.template.signature}}
-                        </span>
-                    </div>
-                    <span ng-show="submitted && myPushForm.body.$error.required" class="help-block">Required</span>
-                    <span ng-show="submitted && myPushForm.body.$error.maxLength" class="help-block">Message trop long</span>
-                    <span class="help-block">Caractères restants {{nbMoreCharsAllowed(msg.body)}}</span>
+        </div>
+        
+        <!-- Template -->
+        <div class="form-group">
+            <label class="col-md-3 control-label" for="template">Modèle</label>
+            <div class="col-md-9">
+                <select name="template" ng-model="msg.template" ng-options="template as template.label for template in templates" class="form-control">
+                    <option value="" ng-selected="selected">Aucun</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- corps du message a envoyer. on affiche le nombre de caractere restant -->
+        <div class="form-group" ng-class="{'has-error': submitted && myPushForm.body.$invalid || myPushForm.body.$error.maxLength}">
+            <label class="col-md-3 control-label" for="body">Message</label>
+            <div class="col-md-9">
+                <div class="input-group input-group-long-addons">
+                    <span class="input-group-addon" ng-if="msg.template.heading">
+                        {{msg.template.heading}}
+                    </span>
+                    <textarea type="text" name="body" ng-model="msg.body" rows="4" class="form-control" required my-validator="{ maxLength: checkMaxPushLength }"></textarea>
+                    <span class="input-group-addon" ng-if="msg.template.signature">
+                        {{msg.template.signature}}
+                    </span>
                 </div>
+                <span ng-show="submitted && myPushForm.body.$error.required" class="help-block">Required</span>
+                <span ng-show="submitted && myPushForm.body.$error.maxLength" class="help-block">Message trop long</span>
+                <span class="help-block">Caractères restants {{nbMoreCharsAllowed(msg.body)}}</span>
             </div>
-            <div class="form-group">
-                <div class="col-md-offset-3 col-md-9">
-                    <button class="btn btn-primary" type="submit">
-                        <span class="glyphicon glyphicon-send"></span>
-                        Envoyer
-                    </button>
-                </div>
-            </div>
-        </form>
+        </div>
+
+        <div class="form-group">
+            <label class="col-md-3 control-label" for="mailOption">Courriel</label>
+            <div class="col-md-9">
+              <select name="mailOption" ng-model="msg.mailOption" ng-options="a.key as a.label for a in mailOptions" class="form-control">
+              </select>
+
+              <div class="alert alert-warning" 
+              ng-if="msg.mailOption === 'DUPLICATE' && msg.destPhoneNumbers.length">
+              Pour les destinataires dont seul le numéro de téléphone est connu, aucun courriel d'accompagnement ne sera envoyé.
+          </div>
+
+          <div ng-if="msg.mailOption !== ''">
+            Objet :
+            <input type="text" ng-model="msg.mailToSend.mailSubject" class="form-control">
+        </div>
+
+        <div ng-if="msg.mailOption === 'OTHER'">
+            (une adresse mail par ligne) :
+            <textarea type="text" name="body" ng-model="msg.mailToSend.mailOtherRecipients" class="form-control"></textarea>
+        </div>
+    </div>  
+</div>
+<div class="form-group">
+    <div class="col-md-offset-3 col-md-9">
+        <button class="btn btn-primary" type="submit">
+            <span class="glyphicon glyphicon-send"></span>
+            Envoyer
+        </button>
     </div>
+</div>
+</form>
+</div>
 </body>
 </html>

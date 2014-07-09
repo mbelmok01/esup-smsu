@@ -42,8 +42,6 @@ app.controller('MainCtrl', function($scope, h, $route, $parse, routes, globals) 
     });
 });
 
-
-
 app.controller('EmptyCtrl', function($scope) {});
 
 app.controller('WelcomeCtrl', function($scope, $rootScope, h) {
@@ -64,7 +62,9 @@ app.controller('GroupsDetailCtrl', function($scope, h, $routeParams, $location) 
 	'FCTN_SMS_ENVOI_NUM_TEL',
 	'FCTN_SMS_ENVOI_LISTE_NUM_TEL',
 	'FCTN_SMS_REQ_LDAP_ADH',
-	'FCTN_SMS_ENVOI_SERVICE_CP' ];
+	'FCTN_SMS_ENVOI_SERVICE_CP',
+	'FCTN_PUSH_ENVOI_LOGIN',
+	'FCTN_PUSH_ENVOI_GROUPES'];
 
     $scope.wip = {};
     $scope.groupOrUserChoices = [{ key:"group", label:"Groupe" },
@@ -620,18 +620,25 @@ app.controller('SendCtrl', function($scope, h, $location) {
 
 });
 
-app.controller('SendNotificationCtrl', function($scope, h, $location) {
+app.controller('SendNotificationCtrl', function($scope, h, $location, $http) {
     $scope.wip = {login: null }; // temp
     $scope.msg = {};
     
-    // Liste des types de destinataires. On peut envoyer une notification a un groupe (un groupe = plusieurs login) ou a un seul login
-    var allRecipientTypes = ['PUSH_ENVOI_GROUPES', 'PUSH_ENVOI_LOGIN'];
+    // Liste des types de destinataires. On peut envoyer une notification à un groupe (un groupe = plusieurs login) ou à un ou plusieurs logins distincts
+    var allRecipientTypes = ['PUSH_ENVOI_LOGIN', 'PUSH_ENVOI_GROUPES'];
     $scope.$watch('loggedUser', function () {
 	$scope.recipientTypes = $.grep(allRecipientTypes, function (e) { 
 	    return $scope.loggedUser && $scope.loggedUser.can["FCTN_" + e];
 	});
 	$scope.recipientType = $scope.recipientTypes[0];
     });
+    
+    $scope.msg.mailOption = '';
+    $scope.mailOptions = [
+	{key: '', label: 'aucun'},
+	{key: 'DUPLICATE', label: "accompagner la notification push d'un courriel"},
+	{key: 'OTHER', label: "autres destinataires"},
+    ];
     
     // permet de faire un appel rest pour recuprere les groupes 
     h.callRest('messages/groupLeaves').then(function (groupLeaves) {
@@ -737,23 +744,56 @@ app.controller('SendNotificationCtrl', function($scope, h, $location) {
 	    var ids = h.array_map(l, function (e) { return e.id; });
 	    return ids.length ? ids : null;
 	}
+        
+        
 	var msg = $scope.msg;
-	
-        var msgToSend = h.objectSlice($scope.msg, ['senderGroup','serviceKey']);
-	
-        msgToSend.content = computeContent(msg.body, msg.template);
+	var msgToSend = h.objectSlice($scope.msg, ['senderGroup','serviceKey']);
+	msgToSend.content = computeContent(msg.body, msg.template);
 	msgToSend.smsTemplate = msg.template && msg.template.label; // for statistics on templates usage
 	msgToSend.recipientLogins = destIds(msg.destLogins);
-	
-        msgToSend.recipientGroup = msg.destGroup && msg.destGroup.id;
-	
+	msgToSend.recipientGroup = msg.destGroup && msg.destGroup.id;
+        if (msg.mailOption) {
+	    var otherRecipients = msg.mailToSend.mailOtherRecipients;
+	    msgToSend.mailToSend = {
+                isMailToRecipients: msg.mailOption === 'DUPLICATE',
+                mailContent: msgToSend.content,
+                mailTemplate : msgToSend.smsTemplate,
+                mailSubject: msg.mailToSend.mailSubject,
+                mailOtherRecipients : otherRecipients ? otherRecipients.split("\n") : []
+            };
+        }
+        
+          
+//        for(var i = 0; i< msgToSend.recipientLogins.length; i++)
+//        {
+//            console.log(msgToSend.recipientLogins.length[i]);
+//            var request = $http({
+//                method: "post",
+//                url: "http://10.13.3.240:8081/ag-push/rest/sender",
+//                headers: {
+//                    "Accept": "application/json",
+//                    "Content-Type": "application/json",
+//                    "Authorization": "Basic MGViNDVhYmEtZDk3ZC00NjgyLThkNTMtNTRhMmY2OTJjY2U5OmJlNTZlMDIwLWFhNjQtNDM3Zi05NGRiLWE1NTZjNDFmNjIyNA==",
+//                    "Cache-Control": "no-cache"
+//                },
+//                data: {
+//                    alias: msgToSend.recipientLogins.length[i],
+//                    message: msgToSend.content,
+//
+//                }
+//            });
+//            $http.post('http://localhost:8081/ag-push/rest/sender', {
+//                "alias": msgToSend.recipientLogins.length[i],
+//                "message": msgToSend.content,
+//            }).success(function(m){alert(m);});
+//        }
         console.log("sending...");
 	console.log(msgToSend);
-	h.callRestModify('post', 'messages', msgToSend).then(function (resp) {
+        
+	h.callRestModify('post', 'notifications', msgToSend).then(function (resp) {
 	    var msg = resp.data;
-	    $location.path('messages/' + msg.id);
+	    $location.path('notifications/' + msg.id);
 	});
-
     };
     
     
