@@ -42,7 +42,7 @@ public class MessageManager {
 	
 	public List<UIMessage> getMessages(final Integer userGroupId, final Integer userAccountId, 
 			final Integer userServiceId, final Integer userTemplateId, final String senderLogin, 
-			final Date beginDate, final Date endDate, int maxResults) {
+			final Date beginDate, final Date endDate, int maxResults, String type) {
 
 		Person sender = null;
 		if (senderLogin != null) {
@@ -56,7 +56,7 @@ public class MessageManager {
 			endDate == null ? null : new java.sql.Date(addOneDay(endDate).getTime());
 	
 		List<Message> messages = daoService.getMessages(userGroupId, userAccountId, userServiceId, 
-								 userTemplateId, sender, beginDateSQL, endDateSQL, maxResults);
+								 userTemplateId, sender, beginDateSQL, endDateSQL, maxResults, type);
 		return convertToUI(messages);
 	}
 
@@ -71,6 +71,14 @@ public class MessageManager {
 		}
 		return msg;
 	}
+        
+        public Message getMessageType(final String messageType, String allowedSender) {		
+		Message msg = daoService.getMessageByType(messageType);
+		if (allowedSender != null && !allowedSender.equals(msg.getSender().getLogin())) {
+			throw new InvalidParameterException(allowedSender + " is not allowed to view message " + messageType);
+		}
+		return msg;
+	}
 
 	public UIMessage getUIMessage(final Integer messageId, String allowedSender) {
 		Message msg = getMessage(messageId, allowedSender);
@@ -78,6 +86,12 @@ public class MessageManager {
 		return convertToUI(Collections.singletonList(msg)).get(0);
 	}
 	
+        public UIMessage getUIMessage(final String messageType, String allowedSender) {
+		Message msg = getMessageType(messageType, allowedSender);
+		if (msg == null) return null;
+		return convertToUI(Collections.singletonList(msg)).get(0);
+	}
+        
 	public List<UIMessage> convertToUI(List<Message> messages) {
 		Map<String, String> id2displayName = getIdToDisplayName(senderLogins(messages));
 
@@ -105,7 +119,8 @@ public class MessageManager {
 		r.serviceName = mess.getService() != null ? mess.getService().getName() : null;
 		r.stateMessage = convertToUI(mess.getStateAsEnum());
 		r.stateMail = convertToUI(mess.getMail());
-		return r;
+                r.type = mess.getType();
+                return r;
 	}
 	
 	private List<String> convertToUI(Set<Person> supervisors) {

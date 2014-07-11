@@ -26,7 +26,8 @@ public class UIMessage {
 	public String serviceName;
 	
 	public String stateMessage;
-	
+	public String type;
+        
 	public String stateMail;
 	public List<String> supervisors;
 	public List<String> recipients;
@@ -77,6 +78,14 @@ public class UIMessage {
 
 	public void setStateMessage(String stateMessage) {
 		this.stateMessage = stateMessage;
+	}
+        
+        public String getTypeMessage() {
+		return type;
+	}
+
+	public void setTypeMessage(String type) {
+		this.type = type;
 	}
 
 	public String getStateMail() {

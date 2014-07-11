@@ -37,8 +37,7 @@ import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
 /**
  * The Hiberate implementation of the DAO service.
  */
-public class HibernateDaoServiceImpl extends HibernateDaoSupport 
-									 implements DaoService, InitializingBean {
+public class HibernateDaoServiceImpl extends HibernateDaoSupport implements DaoService, InitializingBean {
 
 	/**
 	 * The serialization id.
@@ -90,7 +89,7 @@ public class HibernateDaoServiceImpl extends HibernateDaoSupport
 	@SuppressWarnings("unchecked")
 	public List<Message> getMessages(final Integer userGroupId, final Integer userAccountId, 
 			final Integer userServiceId, final Integer userTemplateId, final Person sender, 
-			final java.sql.Date beginDate, final java.sql.Date endDate, int maxResults) {
+			final java.sql.Date beginDate, final java.sql.Date endDate, int maxResults, String type) {
 
 		Criteria criteria = getCurrentSession().createCriteria(Message.class);
 		
@@ -124,6 +123,10 @@ public class HibernateDaoServiceImpl extends HibernateDaoSupport
 		
 		if (endDate != null) {
 			criteria.add(Restrictions.lt(Message.PROP_DATE, endDate));
+		}
+                
+                if (type != null) {
+			criteria.add(Restrictions.lt(Message.PROP_TYPE, type));
 		}
 		
 		criteria.addOrder(Order.desc(Message.PROP_DATE));
@@ -270,8 +273,12 @@ public class HibernateDaoServiceImpl extends HibernateDaoSupport
 	 * @see org.esupportail.smsu.dao.DaoService#getMessageById(java.lang.Integer)
 	 */
 	public Message getMessageById(final Integer id) {
-		return (Message) getHibernateTemplate().get(Message.class, id);
+            return (Message) getHibernateTemplate().get(Message.class, id);
 	}
+        
+        public Message getMessageByType(String type) {
+            return (Message) getHibernateTemplate().get(Message.class, type);
+        }
 	
 	//////////////////////////////////////////////////////////////
 	// Basic Group
@@ -1018,5 +1025,7 @@ public class HibernateDaoServiceImpl extends HibernateDaoSupport
 			logger.debug("done.");
 		}
 	}
+
+    
 
 }

@@ -129,6 +129,12 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   </repositories>
 
   <dependencies>
+  	<dependency>
+         <groupId>org.jboss.aerogear</groupId>
+         <artifactId>unifiedpush-java-client</artifactId>
+         <version>0.7.0</version>
+    </dependency>
+    
                 <dependency>
                         <groupId>javax.servlet</groupId>
                         <artifactId>servlet-api</artifactId>

@@ -65,7 +65,8 @@ public class MessagesController {
 		senderLogin = allowedSender(request, senderLogin);
 		Date beginDate = null;
 		Date endDate = null;
-		return messageManager.getMessages(null, null, null, null, senderLogin, beginDate, endDate, maxResults);
+                String type = "sms";
+		return messageManager.getMessages(null, null, null, null, senderLogin, beginDate, endDate, maxResults, type);
 	}
 		
 	@GET

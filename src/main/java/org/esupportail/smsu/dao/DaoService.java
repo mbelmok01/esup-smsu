@@ -50,12 +50,13 @@ public interface DaoService extends Serializable {
 	 * @param userTemplateId 
 	 * @param userUserId 
 	 * @param beginDate 
-	 * @param endDate 
+	 * @param endDate
+         * @param type
 	 * @return the messages.
 	 * @param[userGroupId, userAccountId, userServiceId, userTemplateId, userUserId, beginDate, endDate]
 	 */
 	List<Message> getMessages(Integer userGroupId, Integer userAccountId, Integer userServiceId, 
-			Integer userTemplateId, Person sender, java.sql.Date beginDate, java.sql.Date endDate, int maxResults);
+			Integer userTemplateId, Person sender, java.sql.Date beginDate, java.sql.Date endDate, int maxResults, String type);
 
 	/**
 	 * @param message
@@ -98,6 +99,8 @@ public interface DaoService extends Serializable {
 	 * @return the message by id.
 	 */
 	Message getMessageById(Integer id);
+        
+        Message getMessageByType(String type);
 	
 	/**
 	 * remove message content in db older than the specified date.

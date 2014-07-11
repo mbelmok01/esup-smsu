@@ -33,7 +33,12 @@ public class Message  implements Serializable {
 	 * Hibernate property for the state.
 	 */
 	public static final String PROP_STATE = "State";
-
+        
+        /**
+	 * Hibernate property for the type.
+	 */
+	
+        public static final String PROP_TYPE = "Type";
 	/**
 	 * Hibernate property for the group sender.
 	 */
@@ -93,12 +98,17 @@ public class Message  implements Serializable {
 	 * message content.
 	 */
 	private java.lang.String content;
-	
+        
 	/**
 	 * message state.
 	 */
 	private java.lang.String state;
 
+        /**
+	 * message type
+	 */
+	private java.lang.String type;
+        
 	/**
 	 * associated account.
 	 */
@@ -164,8 +174,9 @@ public class Message  implements Serializable {
 		this.setGroupRecipient(message.getGroupRecipient());
 		this.setContent(message.getContent());
 		this.setState(message.getState());
-		this.setMail(message.getMail());
-		// nb: setRecipients and setSupervisors are not done
+		this.setType(message.getType());
+                this.setMail(message.getMail());
+                // nb: setRecipients and setSupervisors are not done
 	}
 
 	/**
@@ -188,6 +199,7 @@ public class Message  implements Serializable {
 		this.setGroupRecipient(groupRecipient);
 		this.setContent(content);
 		this.setState(state);
+                this.setType(type);
 	}
 
 
@@ -287,6 +299,20 @@ public class Message  implements Serializable {
 		}
 	}
 
+        /**
+	 * Return the value associated with the column: TYPE.
+	 */
+	public String getType() {
+		return type;
+	}
+        
+        /**
+	 * Set the value related to the column: TYPE.
+	 * @param type the TYPE value
+	 */
+	public void setType(String type) {
+		this.type = type;
+	}
 
 	/**
 	 * Return the value associated with the column: ACC_ID.
@@ -362,7 +388,7 @@ public class Message  implements Serializable {
 	public Mail getMail() {
 		return mail;
 	}
-
+        
 	/**
 	 * Set the value related to the column: MAIL_ID.
 	 * @param mail the MAIL_ID value
@@ -370,9 +396,8 @@ public class Message  implements Serializable {
 	public void setMail(final Mail mail) {
 		this.mail = mail;
 	}
-
-
-
+        
+        
 	/**
 	 * Return the value associated with the column: BGR_SENDER_ID.
 	 */

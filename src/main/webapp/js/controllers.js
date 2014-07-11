@@ -762,36 +762,18 @@ app.controller('SendNotificationCtrl', function($scope, h, $location, $http) {
                 mailOtherRecipients : otherRecipients ? otherRecipients.split("\n") : []
             };
         }
-        
-          
-//        for(var i = 0; i< msgToSend.recipientLogins.length; i++)
-//        {
-//            console.log(msgToSend.recipientLogins.length[i]);
-//            var request = $http({
-//                method: "post",
-//                url: "http://10.13.3.240:8081/ag-push/rest/sender",
-//                headers: {
-//                    "Accept": "application/json",
-//                    "Content-Type": "application/json",
-//                    "Authorization": "Basic MGViNDVhYmEtZDk3ZC00NjgyLThkNTMtNTRhMmY2OTJjY2U5OmJlNTZlMDIwLWFhNjQtNDM3Zi05NGRiLWE1NTZjNDFmNjIyNA==",
-//                    "Cache-Control": "no-cache"
-//                },
-//                data: {
-//                    alias: msgToSend.recipientLogins.length[i],
-//                    message: msgToSend.content,
-//
-//                }
-//            });
-//            $http.post('http://localhost:8081/ag-push/rest/sender', {
-//                "alias": msgToSend.recipientLogins.length[i],
-//                "message": msgToSend.content,
-//            }).success(function(m){alert(m);});
-//        }
+
         console.log("sending...");
 	console.log(msgToSend);
         
 	h.callRestModify('post', 'notifications', msgToSend).then(function (resp) {
 	    var msg = resp.data;
+            console.log("rep");
+            console.log(rep);
+            console.log("msg");
+            console.log(msg);
+            console.log("msg.data");
+            console.log(msg.data)
 	    $location.path('notifications/' + msg.id);
 	});
     };

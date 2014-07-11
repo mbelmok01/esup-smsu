@@ -40,6 +40,15 @@
 		<property name="phoneNumberPattern" value="${recipient.phoneNumberPattern}"></property>
 		<property name="userEmailAttribute" value="${ldap.emailAttribute}"/>
 	</bean>
+
+	<bean id="sendNotificationManager"
+		class="org.esupportail.smsu.business.SendNotificationManager">
+		<property name="defaultSupervisorLogin" value="${sms.defaultSupervisorLogin}"/>
+		<property name="notificationMaxSize" value="${notification.maxLength}"/>
+		<property name="defaultAccount" value="${sms.defaultAccount}"/>
+		<property name="userEmailAttribute" value="${ldap.emailAttribute}"/>
+		
+	</bean>
 	
 	<bean id="customizer"
 		class="org.esupportail.smsu.business.ContentCustomizationManager">
