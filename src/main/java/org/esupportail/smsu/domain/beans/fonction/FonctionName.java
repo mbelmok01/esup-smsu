@@ -40,6 +40,10 @@ public enum FonctionName {
 	FCTN_PUSH_ENVOI_LOGIN,
 	// Send PUSH Groups
 	FCTN_PUSH_ENVOI_GROUPES,
+	// Send PUSH to Everyone
+	FCTN_PUSH_BROADCAST,
+
+
 
 	// Approve SMS. Obsoleted by dynamic "isSupervisor" based on table "supervisor"
 	// FCTN_APPROBATION_ENVOI,

@@ -30,6 +30,7 @@
   <bean id="ServicesSmsuController" class="org.esupportail.smsu.web.controllers.ServicesSmsuController" />
   <bean id="NotificationsController" class="org.esupportail.smsu.web.controllers.NotificationsController" >
     <property name="notificationMaxSize" value="${notification.maxLength}" />
+    <!-- <property name="serverUri" value="${ups.uri}" /> -->
   </bean>
   
   <bean id="MembershipController"	class="org.esupportail.smsu.web.controllers.MembershipController">
@@ -43,6 +44,4 @@
   <bean id="UsersController"	class="org.esupportail.smsu.web.controllers.UsersController">
 		<property name="phoneNumberPattern" value="${recipient.phoneNumberPattern}"></property>
   </bean>
-
- 
 </beans>

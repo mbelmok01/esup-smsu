@@ -12,4 +12,5 @@ public class UINewMessage {
 	public String senderGroup;
 	public String serviceKey;
 	public MailToSend mailToSend;
+        public String recipientType;
 }

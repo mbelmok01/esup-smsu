@@ -32,7 +32,7 @@ myAppTest.run(function($http, $httpBackend, h, $rootScope) {
 
     var consts = {
 	users: {"admin":"The Boss","sender1":"Sender #1","sender2":"Sender #2","user1": "User #1"},
-	allFonctions: ["FCTN_SMS_ENVOI_ADH","FCTN_SMS_ENVOI_GROUPES","FCTN_SMS_ENVOI_NUM_TEL","FCTN_SMS_REQ_LDAP_ADH","FCTN_SMS_AJOUT_MAIL","FCTN_GESTIONS_RESPONSABLES","FCTN_GESTION_ROLES_CRUD","FCTN_GESTION_ROLES_AFFECT","FCTN_GESTION_MODELES","FCTN_GESTION_SERVICES_CP","FCTN_GESTION_QUOTAS","FCTN_SUIVI_ENVOIS_UTIL","FCTN_SUIVI_ENVOIS_ETABL","FCTN_GESTION_GROUPE","FCTN_SMS_ENVOI_LISTE_NUM_TEL", "FCTN_PUSH_ENVOI_GROUPES", "FCTN_PUSH_ENVOI_LOGIN"],
+	allFonctions: ["FCTN_SMS_ENVOI_ADH","FCTN_SMS_ENVOI_GROUPES","FCTN_SMS_ENVOI_NUM_TEL","FCTN_SMS_REQ_LDAP_ADH","FCTN_SMS_AJOUT_MAIL","FCTN_GESTIONS_RESPONSABLES","FCTN_GESTION_ROLES_CRUD","FCTN_GESTION_ROLES_AFFECT","FCTN_GESTION_MODELES","FCTN_GESTION_SERVICES_CP","FCTN_GESTION_QUOTAS","FCTN_SUIVI_ENVOIS_UTIL","FCTN_SUIVI_ENVOIS_ETABL","FCTN_GESTION_GROUPE","FCTN_SMS_ENVOI_LISTE_NUM_TEL", "FCTN_PUSH_ENVOI_GROUPES", "FCTN_PUSH_ENVOI_LOGIN", "FCTN_PUSH_BROADCAST"],
 	accounts: ["test-univ.fr"],
 	basicGroups: [{"id": "gfoo", "name": "GroupFoo"}, 
 		      {"id": "senders", "name": "All Senders"}],
@@ -194,6 +194,7 @@ myAppTest.run(function($http, $httpBackend, h, $rootScope) {
 	db.msgs.unshift(msg);
 	return [200, msg];
     });
+    
     $httpBackend.whenGET(/rest.approvals/).respond(function () { return [200, h.simpleFilter(db.msgs, canApprove)]; });
     $httpBackend.whenPUT(/rest.approvals/).respond(modify_list(db.msgs));
 

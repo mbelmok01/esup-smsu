@@ -625,7 +625,7 @@ app.controller('SendNotificationCtrl', function($scope, h, $location, $http) {
     $scope.msg = {};
     
     // Liste des types de destinataires. On peut envoyer une notification à un groupe (un groupe = plusieurs login) ou à un ou plusieurs logins distincts
-    var allRecipientTypes = ['PUSH_ENVOI_LOGIN', 'PUSH_ENVOI_GROUPES'];
+    var allRecipientTypes = ['PUSH_ENVOI_LOGIN', 'PUSH_ENVOI_GROUPES', 'PUSH_BROADCAST'];
     $scope.$watch('loggedUser', function () {
 	$scope.recipientTypes = $.grep(allRecipientTypes, function (e) { 
 	    return $scope.loggedUser && $scope.loggedUser.can["FCTN_" + e];
@@ -659,7 +659,7 @@ app.controller('SendNotificationCtrl', function($scope, h, $location, $http) {
     function computeContent(body, template) {
 	body = body || '';
 	if (template) {
-	    return template.heading + body + template.signature;
+	    return template.heading + " : " + body;
 	} else {
 	    return body;
 	}
@@ -668,7 +668,7 @@ app.controller('SendNotificationCtrl', function($scope, h, $location, $http) {
     // cette methode renvoie renvoie un template de message precis
     $scope.$watch('msg.template', function () {
 	if ($scope.msg.template)
-	    $scope.msg.body = $scope.msg.template.body;
+	    $scope.msg.body = $scope.msg.template.body+" ";
     });
     
     // cette methode retourne le nombre de caractere du message
@@ -740,45 +740,44 @@ app.controller('SendNotificationCtrl', function($scope, h, $location, $http) {
     // cette methode valide le formulaire
     $scope.submit = function () {
 
-	function destIds(l) {
-	    var ids = h.array_map(l, function (e) { return e.id; });
-	    return ids.length ? ids : null;
-	}
+		function destIds(l) {
+		    var ids = h.array_map(l, function (e) { return e.id; });
+		    return ids.length ? ids : null;
+		}
         
         
-	var msg = $scope.msg;
-	var msgToSend = h.objectSlice($scope.msg, ['senderGroup','serviceKey']);
-	msgToSend.content = computeContent(msg.body, msg.template);
-	msgToSend.smsTemplate = msg.template && msg.template.label; // for statistics on templates usage
-	msgToSend.recipientLogins = destIds(msg.destLogins);
-	msgToSend.recipientGroup = msg.destGroup && msg.destGroup.id;
-        if (msg.mailOption) {
-	    var otherRecipients = msg.mailToSend.mailOtherRecipients;
-	    msgToSend.mailToSend = {
-                isMailToRecipients: msg.mailOption === 'DUPLICATE',
-                mailContent: msgToSend.content,
-                mailTemplate : msgToSend.smsTemplate,
-                mailSubject: msg.mailToSend.mailSubject,
-                mailOtherRecipients : otherRecipients ? otherRecipients.split("\n") : []
-            };
-        }
+		var msg = $scope.msg;
+		var msgToSend = h.objectSlice($scope.msg, ['senderGroup','serviceKey']);
+		msgToSend.content = computeContent(msg.body, msg.template);
+		msgToSend.smsTemplate = msg.template && msg.template.label; // for statistics on templates usage
+		msgToSend.recipientLogins = destIds(msg.destLogins);
+		msgToSend.recipientType = $scope.recipientType;
+		msgToSend.recipientGroup = msg.destGroup && msg.destGroup.id;
+	    if (msg.mailOption) {
+		    var otherRecipients = msg.mailToSend.mailOtherRecipients;
+		    msgToSend.mailToSend = {
+	            isMailToRecipients: msg.mailOption === 'DUPLICATE',
+	            mailContent: msgToSend.content,
+	            mailTemplate : msgToSend.smsTemplate,
+	            mailSubject: msg.mailToSend.mailSubject,
+	            mailOtherRecipients : otherRecipients ? otherRecipients.split("\n") : []
+	        };
+	    }
 
-        console.log("sending...");
-	console.log(msgToSend);
-        
-	h.callRestModify('post', 'notifications', msgToSend).then(function (resp) {
-	    var msg = resp.data;
-            console.log("rep");
-            console.log(rep);
-            console.log("msg");
-            console.log(msg);
-            console.log("msg.data");
-            console.log(msg.data)
-	    $location.path('notifications/' + msg.id);
-	});
-    };
-    
-    
+	    console.log("sending...");
+		console.log(msgToSend);
+	    
+		h.callRestModify('post', 'notifications', msgToSend).then(function (resp) {
+		    var msg = resp.data;
+	        console.log("rep");
+	        console.log(resp);
+	        // console.log("msg");
+	        // console.log(msg);
+	        // console.log("msg.data");
+	        // console.log(msg.data);
+	        //$location.path('messages/' + msg.id);
+		});
+	};
 });
 
 app.controller('MessagesCtrl', function($scope, h, $location, $route) {
@@ -848,7 +847,11 @@ app.controller('MessagesDetailCtrl', function($scope, h, $routeParams, $location
     $scope.getMsg = function () {
 	h.callRest('messages/' + id).then(function (msg) {
 	    $scope.msg = msg;
-	    h.mayGetMsgStatuses(msg);
+	    if(msg.type !="PUSH")
+	    {
+	    	h.mayGetMsgStatuses(msg);
+	    }
+	    
 	});
     };
 

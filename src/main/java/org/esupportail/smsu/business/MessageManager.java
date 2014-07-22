@@ -108,7 +108,11 @@ public class MessageManager {
 		r.id = mess.getId();
 		r.date = mess.getDate();
 		r.content = mess.getContent();
-		r.nbRecipients = mess.getRecipients().size();
+                if(mess.getType() == "SMS")
+                {
+                    r.nbRecipients = mess.getRecipients().size();
+                }
+		
 		r.recipients = convertRecipientsToUI(mess.getRecipients());
 		r.supervisors= convertToUI(mess.getSupervisors());
 		r.senderLogin = mess.getSender().getLogin();

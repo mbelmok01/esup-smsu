@@ -1,6 +1,6 @@
   Le {{msg.date | date:"dd/MM/yyyy à HH:mm"}}, {{msg.senderName}}
   {{msg.stateMessage === "SENT" ? "a envoyé" : "souhaite envoyer"}}
-  le message suivant à {{msg.nbRecipients}} personne(s).
+  le message suivant {{msg.type === "PUSH" ? "" : "à"+ msg.nbRecipients + "personnes(s)."}}
 
   <blockquote><p>
     <span ng-repeat='line in msg.content.split("\n") track by $index'>{{line}}<br></span>
@@ -16,7 +16,9 @@
     <dt>{{'MSG_ACCOUNT'         | translate}}</dt><dd>{{msg.accountLabel}}</dd>
     <dt ng-show="msg.supervisors"
        >{{'MSG_SUPERVISORS'     | translate}}</dt><dd>{{msg.supervisors.join(", ")}}</dd>
+    <dt>{{'MSG_TYPE'            | translate}}</dt><dd>{{'MSG_TYPE_' + msg.type          | translate}}</dd>
     <dt>{{'MSG_STATE'           | translate}}</dt><dd>{{'MSG_STATE_' + msg.stateMessage | translate}}</dd>
+    
     <dt ng-show="msg.stateMail"
        >{{'MSG_MAIL_STATE'      | translate}}</dt><dd ng-show="msg.stateMail">{{'MSG_MAIL_STATE_' + msg.stateMail | translate}}</dd>
   </dl>

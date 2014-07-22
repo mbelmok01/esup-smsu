@@ -54,7 +54,6 @@ public class MessagesController {
 	private Integer smsMaxSize;
 
 	private final Logger logger = new LoggerImpl(getClass());
-
 	
 	@GET
 	@Produces("application/json")
@@ -65,10 +64,10 @@ public class MessagesController {
 		senderLogin = allowedSender(request, senderLogin);
 		Date beginDate = null;
 		Date endDate = null;
-                String type = "sms";
+                String type = "SMS";
 		return messageManager.getMessages(null, null, null, null, senderLogin, beginDate, endDate, maxResults, type);
 	}
-		
+        	
 	@GET
 	@Produces("application/json")
 	@Path("/{id:\\d+}")

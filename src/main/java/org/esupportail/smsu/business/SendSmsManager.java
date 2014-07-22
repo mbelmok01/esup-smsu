@@ -140,6 +140,7 @@ public class SendSmsManager  {
 		message.setStateAsEnum(messageStatus);				
 		message.setSupervisors(mayGetSupervisorsOrNull(message));				
 		message.setDate(new Date());
+                message.setType("SMS");
 		if (msg.mailToSend != null) message.setMail(getMail(message, msg.mailToSend));
 		return message;
 	}

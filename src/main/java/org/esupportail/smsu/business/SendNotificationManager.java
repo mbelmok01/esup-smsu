@@ -1,7 +1,9 @@
 package org.esupportail.smsu.business;
 
+import static com.sun.org.apache.xalan.internal.xsltc.compiler.util.Type.Int;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -63,8 +65,8 @@ public class SendNotificationManager  {
 	@Autowired private SchedulerUtils schedulerUtils;
 	@Autowired private UrlGenerator urlGenerator;
 	@Autowired private ContentCustomizationManager customizer;
-
-	
+        
+        
 	/**
 	 * the default Supervisor login when the max SMS number is reach.
 	 */
@@ -74,16 +76,11 @@ public class SendNotificationManager  {
 	 * The notification max size.
 	 */
 	private Integer notificationMaxSize;
-
+        
 	/**
 	 * The default account.
 	 */
 	private String defaultAccount;
-
-//	/**
-//	 * the phone number validation pattern.
-//	 */
-//	private String phoneNumberPattern;
 
 	/**
 	 * the LDAP Email attribute.
@@ -95,58 +92,114 @@ public class SendNotificationManager  {
 	//////////////////////////////////////////////////////////////
 	// Pricipal methods
 	//////////////////////////////////////////////////////////////
-	public int sendMessage(UINewMessage msg, HttpServletRequest request) throws CreateMessageException {
-            Message message = composeMessage(msg);
+	public Integer sendMessage(UINewMessage msg, HttpServletRequest request) throws CreateMessageException {
             
+            final Message message = composeMessage(msg);
+            
+            if(msg.recipientType.equalsIgnoreCase("PUSH_ENVOI_LOGIN") && msg.recipientLogins != null) {
+                
+                sendNotificationToLogins(message, msg);
+                
+            } else if(msg.recipientType.equalsIgnoreCase("PUSH_ENVOI_GROUPES") && msg.recipientGroup != "undefined") {
+                
+//                si un groupe, on rempli la liste de recipientLogin avec les logins recuperer depuis le ldap
+                if (msg.recipientGroup != "undefined") {
+               
+                    List<LdapUser> users = getUsersByGroup(msg.recipientGroup, msg.serviceKey);
+                
+                    Iterator<LdapUser> iterator = users.iterator();
+                    while(iterator.hasNext())
+                    {
+                        msg.recipientLogins.add(iterator.next().getId());
+                    }
+                }
+                
+            } else if (msg.recipientType.equalsIgnoreCase("PUSH_BROADCAST")) {
+                broadcastNotification(message, msg);
+            }
+//            ----------------------------------------------------------------------------------------------------------------------------
+
+            // si un groupe, on rempli la liste de recipientLogin avec les logins recuperer depuis le ldap
+//            if (msg.recipientGroup != "undefined") {
+//               
+//                List<LdapUser> users = getUsersByGroup(msg.recipientGroup, msg.serviceKey);
+//                
+//                Iterator<LdapUser> iterator = users.iterator();
+//                while(iterator.hasNext())
+//                {
+//                    msg.recipientLogins.add(iterator.next().getId());
+//                }
+//            }
+//            ----------------------------------------------------------------------------------------------------------------------------
+                
+            return message.getId();
+
+        }
+        
+        public void sendNotificationToLogins (final Message message, UINewMessage msg) {
+
             JavaSender defaultJavaSender = new SenderClient.Builder("http://crista05.univ-lr.fr:8081/ag-push").build();
-            
             UnifiedMessage unifiedMessage = new UnifiedMessage.Builder()
                     .pushApplicationId("4499bf1f-3fce-433f-a697-63229fa09b56")
                     .masterSecret("3b343ec3-4965-4b7e-b2a3-e19437936c35")
-                    .alert(msg.content)
                     .aliases(msg.recipientLogins)
+                    .alert(msg.content)
                     .build();
-            
+                    
             defaultJavaSender.send(unifiedMessage, new MessageResponseCallback() {
                 @Override
                 public void onComplete(int statusCode) {
                     //do cool stuff
-                    System.out.print(statusCode);
+                    message.setStateAsEnum(MessageStatus.SENT);
+                    daoService.updateMessage(message);
                 }
                 
                 @Override
                 public void onError(Throwable throwable) {
-                //bring out the bad news
-                    System.err.print(throwable);
+                    //bring out the bad news
+                    message.setStateAsEnum(MessageStatus.WS_ERROR);
+                    daoService.updateMessage(message);
                 }
             });
-
-//            SenderClient.Builder defaultSender = new SenderClient.Builder("http://localhost:8081/ag-push")
-//                    .proxy("wwwcache.univ-lr.fr", 3128)
-//                    .proxyType(Proxy.Type.HTTP);
-//            
-//            UnifiedMessage unifiedMessage = new UnifiedMessage.Builder()
-//                    .pushApplicationId("c7fc6525-5506-4ca9-9cf1-55cc261ddb9c")
-//                    .masterSecret("8b2f43a9-23c8-44fe-bee9-d6b0af9e316b")
-//                    .aliases(Arrays.asList("john", "maria"))
-//                    .alert("Hello from Java Sender API!")
-//                    .sound("default")
-//                    .build();
+        }
+        
+        public void broadcastNotification(final Message message, UINewMessage msg ) {
             
-          return message.getId();
-	}
-
-	public Message composeMessage(UINewMessage msg) throws CreateMessageException {
+            JavaSender defaultJavaSender = new SenderClient.Builder("http://crista05.univ-lr.fr:8081/ag-push").build();
+            UnifiedMessage unifiedMessage = new UnifiedMessage.Builder()
+                    .pushApplicationId("4499bf1f-3fce-433f-a697-63229fa09b56")
+                    .masterSecret("3b343ec3-4965-4b7e-b2a3-e19437936c35")
+                    .alert(msg.content)
+                    .build();
+                    
+            defaultJavaSender.send(unifiedMessage, new MessageResponseCallback() {
+                @Override
+                public void onComplete(int statusCode) {
+                    //do cool stuff
+                    message.setStateAsEnum(MessageStatus.SENT);
+                    daoService.updateMessage(message);
+                }
+                
+                @Override
+                public void onError(Throwable throwable) {
+                    //bring out the bad news
+                    message.setStateAsEnum(MessageStatus.WS_ERROR);
+                    daoService.updateMessage(message);
+                }
+            });
+        }
+        
+        public Message composeMessage(UINewMessage msg) throws CreateMessageException {
             Message message = createMessage(msg);
             daoService.addMessage(message);
             return message;
 	}
-
-	private Message createMessage(UINewMessage msg) throws CreateMessageException  {
+        
+        private Message createMessage(UINewMessage msg) throws CreateMessageException  {
             Service service = getService(msg.serviceKey);
             
-//            Set<Recipient> recipients = getRecipients(msg, msg.serviceKey); // récupère le numéro de chaque login
-            int recipients = msg.recipientLogins.size();
+//            int recipients = msg.recipientLogins.size();
+            int recipients = 1;
             BasicGroup groupRecipient = getGroupRecipient(msg.recipientGroup);
             BasicGroup groupSender = getGroupSender(msg.senderGroup);
             MessageStatus messageStatus = getWorkflowState(recipients, groupSender, groupRecipient);
@@ -162,17 +215,16 @@ public class SendNotificationManager  {
             message.setAccount(getAccount(msg.senderGroup));
             message.setService(service);
             message.setGroupSender(groupSender);
-//            message.setRecipients(recipients);
             message.setGroupRecipient(groupRecipient);			
             message.setStateAsEnum(messageStatus);				
-            message.setSupervisors(mayGetSupervisorsOrNull(message));				
+            message.setSupervisors(mayGetSupervisorsOrNull(message));
             message.setDate(new Date());
-            message.setType("push");
+            message.setType("PUSH");
             if (msg.mailToSend != null) message.setMail(getMail(message, msg.mailToSend));
             return message;
 	}
-
-	private Set<Person> mayGetSupervisorsOrNull(Message message) {
+        
+        private Set<Person> mayGetSupervisorsOrNull(Message message) {
             if (MessageStatus.WAITING_FOR_APPROVAL.equals(message.getStateAsEnum())) {
                 logger.debug("Supervisors needed");
                 Set<Person> supervisors = new HashSet<Person>();
@@ -186,38 +238,6 @@ public class SendNotificationManager  {
             }
 	}
         
-//	/**
-//	 * @param message
-//	 * @param request 
-//	 * @return null or an error message (key into i18n properties)
-//	 * @throws CreateMessageException.WebService
-//	 */
-//	public void treatMessage(final Message message, HttpServletRequest request) throws CreateMessageException.WebService {
-//            try {
-//                if (message.getStateAsEnum().equals(MessageStatus.NO_RECIPIENT_FOUND))
-//                    ;
-//                else if (message.getStateAsEnum().equals(MessageStatus.WAITING_FOR_APPROVAL))
-//                    // envoi du mail
-//                    sendApprovalMailToSupervisors(message, request);
-//                else 
-//                    maySendMessageInBackground(message);
-//            } catch (AuthenticationFailedException e) {
-//                message.setStateAsEnum(MessageStatus.WS_ERROR);
-//                daoService.updateMessage(message);
-//                logger.error("Application unknown", e);
-//                throw new CreateMessageException.WebServiceUnknownApplication(e);
-//            } catch (InsufficientQuotaException e) {
-//                message.setStateAsEnum(MessageStatus.WS_QUOTA_ERROR);
-//                daoService.updateMessage(message);
-//                logger.error("Quota error", e);
-//                throw new CreateMessageException.WebServiceInsufficientQuota(e);
-//            } catch (HttpException e) {
-//                message.setStateAsEnum(MessageStatus.WS_ERROR);
-//                daoService.updateMessage(message);
-//                throw new CreateMessageException.BackOfficeUnreachable(e);
-//            }
-//	}
-
 	/**
 	 * Used to send message in state waiting_for_sending.
 	 * @throws InsufficientQuotaException 
@@ -359,13 +379,11 @@ public class SendNotificationManager  {
 
 
 	private void maySendMessageInBackground(final Message message) throws HttpException, InsufficientQuotaException {
-//            checkBackOfficeQuotas(message);
-// message is ready to be sent to the back office
             
             if (logger.isDebugEnabled()) {
                 logger.debug("Setting to state WAINTING_FOR_SENDING message with ID : " + message.getId());
             }
-            message.setStateAsEnum(MessageStatus.WAITING_FOR_SENDING);
+            message.setStateAsEnum(MessageStatus.SENT);
             daoService.updateMessage(message);
 
             // launch ASAP the task witch manage the sms sending
@@ -456,86 +474,84 @@ public class SendNotificationManager  {
 	 * @param message
 	 */
 	public void sendMails(final Message message) {
+            
+            final Mail mail = message.getMail();
+            
+            if (logger.isDebugEnabled()) {
+                logger.debug("sendMails");
+            }
+            
+            if (mail == null) return;
+            
+            if (logger.isDebugEnabled()) {
+                logger.debug("sendMails mail not null");
+            }
+            //retrieve all informations from message (EXP_NOM, ...)
+            final Set<MailRecipient> recipients = mail.getMailRecipients();
+            final String mailSubject = mail.getSubject();
+            //the original content
+            final String originalContent = mail.getContent();
+            try {
+                final String contentWithoutExpTags = customizer.customizeExpContent(originalContent, message.getGroupSender(), message.getSender());
+                if (logger.isDebugEnabled()) {
+                    logger.debug("sendMails contentWithoutExpTags: " + contentWithoutExpTags);
+                }
+                for (MailRecipient recipient : recipients) {
+                    //the recipient uid
+                    final String destUid = recipient.getLogin();
+                    //the message is customized with user informations
+                    String customizedContentMail = customizer.customizeDestContent(contentWithoutExpTags, destUid);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("sendMails customizedContentMail: " + customizedContentMail);
+                    }
 
-		final Mail mail = message.getMail();
-
-		if (logger.isDebugEnabled()) {
-			logger.debug("sendMails");
-		}
-		if (mail == null) return;
-
-			if (logger.isDebugEnabled()) {
-				logger.debug("sendMails mail not null");
-			}
-			//retrieve all informations from message (EXP_NOM, ...)
-			final Set<MailRecipient> recipients = mail.getMailRecipients();
-			final String mailSubject = mail.getSubject();
-			//the original content
-			final String originalContent = mail.getContent();
-			try {
-				final String contentWithoutExpTags = customizer.customizeExpContent(originalContent, message.getGroupSender(), message.getSender());
-				if (logger.isDebugEnabled()) {
-					logger.debug("sendMails contentWithoutExpTags: " 
-							+ contentWithoutExpTags);
-				}
-				for (MailRecipient recipient : recipients) {
-					//the recipient uid
-					final String destUid = recipient.getLogin();
-					//the message is customized with user informations
-					String customizedContentMail = customizer.customizeDestContent(
-							contentWithoutExpTags, destUid);
-					if (logger.isDebugEnabled()) {
-						logger.debug("sendMails customizedContentMail: " 
-								+ customizedContentMail);
-					}
-
-					String mailAddress = recipient.getAddress();
-					if (mailAddress != null) {
-						logger.debug("Mail sent to : " + mailAddress);
-						smtpServiceUtils.sendOneMessage(mailAddress, mailSubject, customizedContentMail);
-					}
-				}
-				message.getMail().setStateAsEnum(MailStatus.SENT);
-			} catch (CreateMessageException e) {
-				logger.error("discarding message with " + e + " (this should not happen, the message should have been checked first!)");
-				message.getMail().setStateAsEnum(MailStatus.ERROR);
-			} 
+                    String mailAddress = recipient.getAddress();
+                    if (mailAddress != null) {
+                        logger.debug("Mail sent to : " + mailAddress);
+                        smtpServiceUtils.sendOneMessage(mailAddress, mailSubject, customizedContentMail);
+                    }
+                }
+                message.getMail().setStateAsEnum(MailStatus.SENT);
+            } catch (CreateMessageException e) {
+                logger.error("discarding message with " + e + " (this should not happen, the message should have been checked first!)");
+                message.getMail().setStateAsEnum(MailStatus.ERROR);
+            } 
 	}
 
 	private List<CustomizedGroup> getSupervisorCustomizedGroup(final Message message) {
+            
+            List<CustomizedGroup> l = getSupervisorCustomizedGroupByGroup(message.getGroupRecipient(), "destination");
+            if (!l.isEmpty()) return l;
 
-		List<CustomizedGroup> l = getSupervisorCustomizedGroupByGroup(message.getGroupRecipient(), "destination");
-		if (!l.isEmpty()) return l;
+            CustomizedGroup r = getCustomizedGroupWithSupervisors(message.getGroupSender());
+            if (r != null) return singletonList(r);
 
-		CustomizedGroup r = getCustomizedGroupWithSupervisors(message.getGroupSender());
-		if (r != null) return singletonList(r);
-
-		logger.debug("Supervisor needed without a group. Using the default supervisor : [" + defaultSupervisorLogin + "]");
-		r = new CustomizedGroup();
-		r.setLabel("defaultSupervisor");
-		r.setSupervisors(Collections.singleton(defaultSupervisor()));
-		return singletonList(r);
+            logger.debug("Supervisor needed without a group. Using the default supervisor : [" + defaultSupervisorLogin + "]");
+            r = new CustomizedGroup();
+            r.setLabel("defaultSupervisor");
+            r.setSupervisors(Collections.singleton(defaultSupervisor()));
+            return singletonList(r);
 	}
 
 	private Person defaultSupervisor() {
-		Person admin = daoService.getPersonByLogin(defaultSupervisorLogin);
-		if (admin == null) {
-			admin = new Person(null, defaultSupervisorLogin);
-		}
-		return admin;
+            Person admin = daoService.getPersonByLogin(defaultSupervisorLogin);
+            if (admin == null) {
+                admin = new Person(null, defaultSupervisorLogin);
+            }
+            return admin;
 	}
 
 	private List<CustomizedGroup> getSupervisorCustomizedGroupByGroup(final BasicGroup group, String groupKind) {
-		if (group == null) return new LinkedList<CustomizedGroup>();
+            if (group == null) return new LinkedList<CustomizedGroup>();
 
-		List<CustomizedGroup> cGroups = getSupervisorCustomizedGroupByLabel(group.getLabel());
+            List<CustomizedGroup> cGroups = getSupervisorCustomizedGroupByLabel(group.getLabel());
 
-		if (!cGroups.isEmpty())
-			logger.info("Supervisor found from " + groupKind + " group : [" + cGroups + "]");
-		else
-			logger.debug("No supervisor found from " + groupKind + " group.");
-		
-		return cGroups;
+            if (!cGroups.isEmpty())
+                logger.info("Supervisor found from " + groupKind + " group : [" + cGroups + "]");
+            else
+                logger.debug("No supervisor found from " + groupKind + " group.");
+
+            return cGroups;
 	}
 
 	/**
@@ -544,97 +560,29 @@ public class SendNotificationManager  {
 	 */
 	private List<CustomizedGroup> getSupervisorCustomizedGroupByLabel(final String groupLabel) {
             if (logger.isDebugEnabled()) {
-			logger.debug("getSupervisorCustomizedGroupByLabel for group [" + groupLabel + "]");
-		}
-		
-		Map<String, List<String>> groupAndParents = group2parents(groupLabel);
-		
-		Set<String> todo = Collections.singleton(groupLabel);
-		List<CustomizedGroup> found = new LinkedList<CustomizedGroup>();
-		while (!todo.isEmpty()) {
-			Set<String> next = new LinkedHashSet<String>();
-			for (String label : todo) {
-			    CustomizedGroup cGroup = getCustomizedGroupByLabelWithSupervisors(label);
-			    if (cGroup != null) {
-				    found.add(cGroup);
-				    continue;
-			    }
-			    // not found, will search in the parents
-			    next.addAll(groupAndParents.get(label));
-			}
-			todo = next;
-		}
-		return found;
+                logger.debug("getSupervisorCustomizedGroupByLabel for group [" + groupLabel + "]");
+            }
+            
+            Map<String, List<String>> groupAndParents = group2parents(groupLabel);
+
+            Set<String> todo = Collections.singleton(groupLabel);
+            List<CustomizedGroup> found = new LinkedList<CustomizedGroup>();
+            while (!todo.isEmpty()) {
+                Set<String> next = new LinkedHashSet<String>();
+                for (String label : todo) {
+                    CustomizedGroup cGroup = getCustomizedGroupByLabelWithSupervisors(label);
+                    if (cGroup != null) {
+                            found.add(cGroup);
+                            continue;
+                    }
+                    // not found, will search in the parents
+                    next.addAll(groupAndParents.get(label));
+                }
+                todo = next;
+            }
+            return found;
 	}
-// cette fonction recupere les numero de telephone a partir des logins en appellant la méthode getRecipients: inutile
-//	private Set<Recipient> getRecipients(UINewMessage msg, String serviceKey) throws EmptyGroup {
-//		Set<Recipient> recipients = new HashSet<Recipient>();
-//		if (msg.recipientLogins != null) addLoginsRecipients(recipients, msg.recipientLogins, serviceKey);
-//		addGroupRecipients(recipients, msg.recipientGroup, serviceKey);
-//		return recipients;
-//	}
-
-//	private void addPhoneNumbersRecipients(Set<Recipient> recipients, List<String> phoneNumbers) {
-//		for (String phoneNumber : phoneNumbers)
-//			mayAdd(recipients, phoneNumber, null);
-//	}
-
-// cette fonction recupere les numero de telepohnes a partir du login
-//	private void addLoginsRecipients(Set<Recipient> recipients, List<String> logins, String serviceKey) {
-//		List<LdapUser> users = ldapUtils.getConditionFriendlyLdapUsersFromUid(logins, serviceKey);
-//		for (LdapUser user : users) {
-//			String phoneNumber = ldapUtils.getUserPagerByUser(user);
-//			if (phoneNumber == null)
-//				throw new InvalidParameterException("user " + user.getId()+ " has no phone number to send SMS to");
-////			mayAdd(recipients, phoneNumber, user.getId());
-//		}
-//	}
-// récupere les numero de telephone des utilisateurs d'un groupe : comme getRecipients : inutile
-//	private void addGroupRecipients(Set<Recipient> recipients, final String groupId, String serviceKey) throws EmptyGroup {
-//		if (groupId == null) return;
-//		
-//				// Group users are search from the portal.
-//				List<LdapUser> groupUsers = getUsersByGroup(groupId,serviceKey);
-//				if (groupUsers == null)
-//					throw new InvalidParameterException("INVALID.GROUP");
-//				if (groupUsers.isEmpty())
-//					throw new CreateMessageException.EmptyGroup(groupId);
-//					
-//				//users are added to the recipient list.
-//				for (LdapUser ldapUser : groupUsers) {
-////					String phone = ldapUtils.getUserPagerByUser(ldapUser);
-//					String login = ldapUser.getId();
-////					mayAdd(recipients, phone, login);
-//				}
-//	}
-
-//	private void mayAdd(Set<Recipient> recipients, String phone, String login) {
-//		if (StringUtils.isEmpty(this.phoneNumberPattern) || 
-//		    phone.matches(this.phoneNumberPattern)) {
-//			recipients.add(getOrCreateRecipient(phone, login));
-//		} else {
-//			logger.debug("skipping weird phone number " + phone);
-//		}
-//	}
-
-//	private Recipient getOrCreateRecipient(String phone, String login) {
-//		// check if the recipient is already in the database. 
-//		Recipient recipient = daoService.getRecipientByPhone(phone);
-//
-//		if (recipient == null) {	
-//			recipient = new Recipient(null, phone, login);
-//			daoService.addRecipient(recipient);
-//		} else {			
-//			// the phone number may already exist, but the associated login may be NULL (or maybe old?)
-//			// we must ensure current login is associated to the phone number
-//			if (login != null) {
-//				recipient.setLogin(login);
-//				daoService.updateRecipient(recipient);
-//			}
-//		}
-//		return recipient;
-//	}
-
+        
 	/**
 	 * @param groupId
 	 * @param serviceKey 
@@ -685,7 +633,6 @@ public class SendNotificationManager  {
                 throw new InvalidParameterException("NO_RECIPIENT_FOUND");
             }
             
-//            checkFrontOfficeQuota(nbRecipients, cGroup, groupSender);
             if (groupRecipient != null) {
                 return MessageStatus.WAITING_FOR_APPROVAL;
             } else {
@@ -760,123 +707,38 @@ public class SendNotificationManager  {
 	 * @throws HttpException 
 	 */
 	private void sendCustomizedMessages(final CustomizedMessage customizedMessage) throws HttpException, InsufficientQuotaException {
-		final Integer messageId = customizedMessage.getMessageId();
-		final Integer senderId = customizedMessage.getSenderId();
-		final Integer groupSenderId = customizedMessage.getGroupSenderId();
-		final Integer serviceId = customizedMessage.getServiceId();
-//		final String recipiendPhoneNumber = customizedMessage.getRecipiendPhoneNumber();
-		final String userLabelAccount = customizedMessage.getUserAccountLabel();
-		final String message = customizedMessage.getMessage();
-		if (logger.isDebugEnabled()) {
-			logger.debug("Sending to back office message with : " + 
-				     " - message id = " + messageId + 
-				     " - sender id = " + senderId + 
-				     " - group sender id = " + groupSenderId + 
-				     " - service id = " + serviceId + 
-//				     " - recipient phone number = " + recipiendPhoneNumber + 
-				     " - user label account = " + userLabelAccount + 
-				     " - message = " + message);
-		}
-                
-		// send the message to the back office // requete ajax vers le serveur jboss
-                
-                
-
-//		smsuapiWS.sendSMS(messageId, senderId, recipiendPhoneNumber, userLabelAccount, message);
-                
-                
-
+            final Integer messageId = customizedMessage.getMessageId();
+            final Integer senderId = customizedMessage.getSenderId();
+            final Integer groupSenderId = customizedMessage.getGroupSenderId();
+            final Integer serviceId = customizedMessage.getServiceId();
+            final String userLabelAccount = customizedMessage.getUserAccountLabel();
+            final String message = customizedMessage.getMessage();
+            if (logger.isDebugEnabled()) {
+                    logger.debug("Sending to back office message with : " + 
+                                 " - message id = " + messageId + 
+                                 " - sender id = " + senderId + 
+                                 " - group sender id = " + groupSenderId + 
+                                 " - service id = " + serviceId + 
+                                 " - user label account = " + userLabelAccount + 
+                                 " - message = " + message);
+            }                
 	}
 
-//	private Boolean checkMaxSmsGroupQuota(final Integer nbToSend, final CustomizedGroup cGroup, final BasicGroup groupSender) {
-//		final Long quotaOrder = cGroup.getQuotaOrder();
-//		if (nbToSend <= quotaOrder) {
-//			return true;
-//		} else {
-//			final String mess = 
-//			    "Message necessite approbation : nombre maximum de sms par envoi pour le groupe d'envoi [" + 
-//			    groupSender.getLabel() + 
-//			    "] et groupe associated [" + cGroup.getLabel() + 
-//			    "]. Essai d'envoi de " + nbToSend + " message(s), nombre max par envoi = " + quotaOrder;
-//			logger.info(mess);
-//			return false;
-//		}
-//	}
-//
-//	private void checkFrontOfficeQuota(final Integer nbToSend, final CustomizedGroup cGroup, final BasicGroup groupSender)
-//	    throws CreateMessageException.GroupQuotaException {
-//
-//		if (logger.isDebugEnabled()) {
-//			final String mess = 
-//			    "Verification du quota front office pour le groupe d'envoi [" + 
-//			    groupSender.getLabel() + 
-//			    "] et groupe associated [" + cGroup.getLabel() + 
-//			    "]. Essai d'envoi de " + nbToSend + " message(s), quota = " + cGroup.getQuotaSms() + 
-//			    " , consomme = " + cGroup.getConsumedSms();
-//			logger.warn(mess);
-//		}
-//		if (cGroup.checkQuotaSms(nbToSend)) {
-//			logger.debug("checkFrontOfficeQuota : ok");
-//		} else {
-//			final String mess = 
-//			    "Erreur de quota pour le groupe d'envoi [" + groupSender.getLabel() + 
-//			    "] et groupe associated [" + cGroup.getLabel() + "]. Essai d'envoi de " + nbToSend + 
-//			    " message(s), quota = " + cGroup.getQuotaSms() + " , consomme = " + cGroup.getConsumedSms();
-//			logger.warn(mess);
-//			throw new CreateMessageException.GroupQuotaException(cGroup.getLabel());
-//		}
-//	}
-	/**
-	 * @return quotasOk
-	 * @throws InsufficientQuotaException 
-	 * @throws HttpException 
-	 */ 
-//	private void checkBackOfficeQuotas(final Message message) throws HttpException, InsufficientQuotaException {
-//		/////check the quotas with the back office/////
-//		Integer nbToSend = message.getRecipients().size();
-//		String accountLabel = message.getAccount().getLabel();
-//		checkBackOfficeQuotas(nbToSend, accountLabel);
-//	}
-//
-//	private void checkBackOfficeQuotas(final Integer nbToSend, final String accountLabel) throws HttpException, InsufficientQuotaException {
-//		try {
-//			if (logger.isDebugEnabled()) {
-//				logger.debug("Request for WS SendSms method mayCreateAccountCheckQuotaOk with parameters \n" 
-//						+ "nbToSend = " + nbToSend + "\n" 
-//						+ "accountLabel = " + accountLabel);
-//			}
-//
-//			smsuapiWS.mayCreateAccountCheckQuotaOk(nbToSend, accountLabel);
-//			
-//			if (logger.isDebugEnabled()) {
-//				logger.debug("checkQuotaOk: quota is ok to send all our messages"); 
-//			}
-//
-//		} catch (HttpException.Unreachable e) {
-//			checkWhySmsuapiFailed(e.getCause());
-//			throw e;
-//		}
-//	}
 
-//	public void checkWhySmsuapiFailed(Throwable cause) {
-//		org.esupportail.smsu.services.ssl.InspectKeyStore inspect = new org.esupportail.smsu.services.ssl.InspectKeyStore();
-//		inspect.inspectTrustStore();
-//		logger.error("Unable to connect to smsuapi back office : " + cause);
-//	}
-
-	/**
+        /**
 	 * @param userGroup
 	 * @return the sender group.
 	 */
 	private BasicGroup getGroupSender(final String userGroup) {
-		// the sender group is set
-		BasicGroup basicGroupSender = daoService.getGroupByLabel(userGroup);
-		if (basicGroupSender == null) {
-			basicGroupSender = new BasicGroup();
-			basicGroupSender.setLabel(userGroup);
-		}
-		return basicGroupSender;
+            // the sender group is set
+            BasicGroup basicGroupSender = daoService.getGroupByLabel(userGroup);
+            if (basicGroupSender == null) {
+                    basicGroupSender = new BasicGroup();
+                    basicGroupSender.setLabel(userGroup);
+            }
+            return basicGroupSender;
 	}
+        
 	/**
 	 * @param userGroup
 	 * @return an account.
@@ -904,7 +766,8 @@ public class SendNotificationManager  {
 		}
 		return l;
 	}
-
+        
+        
 	@SuppressWarnings("unused")
 	private List<String> keepGroupLeaves(Set<String> ids) {
 		logger.debug("keepGroupLeaves: given ids " + ids);
@@ -923,6 +786,7 @@ public class SendNotificationManager  {
 		return keptIds;
 	}
 
+        
 	/**
 	 * @param label
 	 * @return the path corresponding to a group
@@ -931,6 +795,7 @@ public class SendNotificationManager  {
 	    return groupUtils.group2parents(label);
 	}
 
+        
 	/**
 	 * @param it iterator on a sorted collection of strings 
 	 * @return the strings without the prefix strings
@@ -938,29 +803,29 @@ public class SendNotificationManager  {
 	 * example: { "a/b", "a", "c" } returns { "a/b", "c" }
 	 */
 	private List<String> keepLeaves(Iterator<String> it) {
-		List<String> keptIds = new LinkedList<String>();
-		String prev = null;
-		while (it.hasNext()) {
-			String current = it.next();
-			if (prev != null && prev.startsWith(current)) 
-				; // skip current
-			else if (prev == null || current.startsWith(prev))					
-				prev = current; // skip prev
-			else {
-				keptIds.add(prev);
-				prev = current;
-			}
-		}
-		if (prev != null) keptIds.add(prev);
-		return keptIds;
+            List<String> keptIds = new LinkedList<String>();
+            String prev = null;
+            while (it.hasNext()) {
+                String current = it.next();
+                if (prev != null && prev.startsWith(current)) 
+                    ; // skip current
+                else if (prev == null || current.startsWith(prev))					
+                    prev = current; // skip prev
+                else {
+                    keptIds.add(prev);
+                    prev = current;
+                }
+            }
+            if (prev != null) keptIds.add(prev);
+            return keptIds;
 	}
 
 	private CustomizedGroup getCustomizedGroup(BasicGroup group) {
-		return getCustomizedGroupByLabel(group.getLabel());
+            return getCustomizedGroupByLabel(group.getLabel());
 	}
 
 	private CustomizedGroup getCustomizedGroupWithSupervisors(BasicGroup group) {
-		return getCustomizedGroupByLabelWithSupervisors(group.getLabel());
+            return getCustomizedGroupByLabelWithSupervisors(group.getLabel());
 	}
 
 	/**
@@ -968,45 +833,45 @@ public class SendNotificationManager  {
 	 * @return the customized group corresponding to a group
 	 */
 	private CustomizedGroup getCustomizedGroupByLabel(String label) {
-		//search the customized group from the data base
-		return daoService.getCustomizedGroupByLabel(label);
+            //search the customized group from the data base
+            return daoService.getCustomizedGroupByLabel(label);
 	}
 
 	private CustomizedGroup getCustomizedGroupByLabelWithSupervisors(String label) {
-		CustomizedGroup g = getCustomizedGroupByLabel(label);
-		if (g != null) {
-			if (!g.getSupervisors().isEmpty()) {
-				return g;
-			}
-			logger.debug("Customized group without supervisor found : [" + label + "]");
-		}
-		return null;
+            CustomizedGroup g = getCustomizedGroupByLabel(label);
+            if (g != null) {
+                if (!g.getSupervisors().isEmpty()) {
+                    return g;
+                }
+                logger.debug("Customized group without supervisor found : [" + label + "]");
+            }
+            return null;
 	}
 
 	private Service getService(final String key) {
-		if (key != null)
-			return daoService.getServiceByKey(key);
-		else
-			return null;
+            if (key != null)
+                return daoService.getServiceByKey(key);
+            else
+                return null;
 	}
 
 	private String getI18nString(String key, String arg1) {
-		return i18nService.getString(key, i18nService.getDefaultLocale(), arg1);
+            return i18nService.getString(key, i18nService.getDefaultLocale(), arg1);
 	}
 	private String getI18nString(String key, String arg1, String arg2) {
-		return i18nService.getString(key, i18nService.getDefaultLocale(), arg1, arg2);
+            return i18nService.getString(key, i18nService.getDefaultLocale(), arg1, arg2);
 	}
 	private String getI18nString(String key, String arg1, String arg2, String arg3) {
-		return i18nService.getString(key, i18nService.getDefaultLocale(), arg1, arg2, arg3);
+            return i18nService.getString(key, i18nService.getDefaultLocale(), arg1, arg2, arg3);
 	}
 	private String getI18nString(String key, String arg1, String arg2, String arg3, String arg4) {
-		return i18nService.getString(key, i18nService.getDefaultLocale(), arg1, arg2, arg3, arg4);
+            return i18nService.getString(key, i18nService.getDefaultLocale(), arg1, arg2, arg3, arg4);
 	}
 
 	private <A> LinkedList<A> singletonList(A e) {
-		final LinkedList<A> l = new LinkedList<A>();
-		l.add(e);
-		return l;
+            final LinkedList<A> l = new LinkedList<A>();
+            l.add(e);
+            return l;
 	}	
 	
 	///////////////////////////////////
@@ -1014,25 +879,20 @@ public class SendNotificationManager  {
 	///////////////////////////////////
 	@Required
 	public void setNotificationMaxSize(final Integer notificationMaxSize) {
-		this.notificationMaxSize = notificationMaxSize;
+            this.notificationMaxSize = notificationMaxSize;
 	}
 
 	@Required
 	public void setDefaultSupervisorLogin(final String defaultSupervisorLogin) {
-		this.defaultSupervisorLogin = defaultSupervisorLogin;
+            this.defaultSupervisorLogin = defaultSupervisorLogin;
 	}
 
 	@Required
 	public void setDefaultAccount(final String defaultAccount) {
-		this.defaultAccount = defaultAccount;
+            this.defaultAccount = defaultAccount;
 	}
-
-//	@Required
-//	public void setPhoneNumberPattern(final String phoneNumberPattern) {
-//		this.phoneNumberPattern = phoneNumberPattern;
-//	}
-
-	@Required
+        
+        @Required
 	public void setUserEmailAttribute(final String userEmailAttribute) {
 		this.userEmailAttribute = userEmailAttribute;
 	}

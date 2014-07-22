@@ -35,10 +35,17 @@ app.config(function ($translateProvider) {
       MSG_RECIPIENTS		: "Destinataires",
 
       MSG_STATE			: "État",
+      MSG_TYPE                : "Type du message",
       MSG_MAIL_STATE		: "État du mail",
       MSG_INFO_NBR_RECIPIENTS	: "Nb destinataires",
       MSG_INFO_NBR_SENT		: "Nb reçus",
       MSG_INFO_NBR_BLACKLIST	: "Nb invalides",
+
+
+      MSG_TYPE_PUSH           : "Notification Push",
+      MSG_TYPE_SMS            : "Message SMS",
+
+
 
       MSG_STATE_SENT		: "Envoyé",
       MSG_STATE_CANCEL		: "Annulé",
@@ -52,12 +59,15 @@ app.config(function ($translateProvider) {
       MSG_MAIL_STATE_WAITING	: "En attente",
       MSG_MAIL_STATE_ERROR	: "Erreur",
 
+
       SMS_ENVOI_LISTE_NUM_TEL   : "Liste de numéros de téléphone",
       SMS_ENVOI_GROUPES         : "Groupe d'utilisateurs",
       SMS_ENVOI_ADH             : "Utilisateur adhérent",
       SMS_ENVOI_NUM_TEL         : "Numéros de téléphone",
       PUSH_ENVOI_LOGIN          : "Logins d'utilisateurs",
-      PUSH_ENVOI_GROUPES        : "Groupe d'utilisateurs"
+      PUSH_ENVOI_GROUPES        : "Groupe d'utilisateurs",
+      PUSH_BROADCAST            : "Diffusion"
+
   });
   $translateProvider.preferredLanguage('fr');
 });

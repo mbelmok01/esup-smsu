@@ -362,7 +362,7 @@ this.getServices = function () {
 };
 
 this.mayGetMsgStatuses = function (msg) {
-    if (msg.stateMessage === "SENT") {
+    if (msg.stateMessage === "SENT" && msg.type === "SMS") {
 	h.callRest('messages/' + msg.id + '/statuses').then(function (statuses) {
 	    msg.statuses = statuses;
 	});
