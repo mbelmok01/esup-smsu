@@ -770,12 +770,8 @@ app.controller('SendNotificationCtrl', function($scope, h, $location, $http) {
 		h.callRestModify('post', 'notifications', msgToSend).then(function (resp) {
 		    var msg = resp.data;
 	        console.log("rep");
-	        console.log(resp);
-	        // console.log("msg");
-	        // console.log(msg);
-	        // console.log("msg.data");
-	        // console.log(msg.data);
-	        //$location.path('messages/' + msg.id);
+	        console.log(resp)
+	        $location.path('messages/' + msg.id);
 		});
 	};
 });

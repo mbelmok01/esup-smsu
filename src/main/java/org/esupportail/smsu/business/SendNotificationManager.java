@@ -96,42 +96,30 @@ public class SendNotificationManager  {
             
             final Message message = composeMessage(msg);
             
-            if(msg.recipientType.equalsIgnoreCase("PUSH_ENVOI_LOGIN") && msg.recipientLogins != null) {
+            if((msg.recipientType.equalsIgnoreCase("PUSH_ENVOI_LOGIN") && msg.recipientLogins != null) || (msg.recipientType.equalsIgnoreCase("PUSH_BROADCAST")) ) {
                 
                 sendNotificationToLogins(message, msg);
                 
             } else if(msg.recipientType.equalsIgnoreCase("PUSH_ENVOI_GROUPES") && msg.recipientGroup != "undefined") {
                 
-//                si un groupe, on rempli la liste de recipientLogin avec les logins recuperer depuis le ldap
-                if (msg.recipientGroup != "undefined") {
-               
-                    List<LdapUser> users = getUsersByGroup(msg.recipientGroup, msg.serviceKey);
-                
-                    Iterator<LdapUser> iterator = users.iterator();
-                    while(iterator.hasNext())
-                    {
-                        msg.recipientLogins.add(iterator.next().getId());
-                    }
+                //  si un groupe, on rempli la liste de recipientLogin avec les logins recuperer depuis le ldap
+                List<LdapUser> groupUsers = getUsersByGroup(msg.recipientGroup ,msg.serviceKey);
+		
+                if (groupUsers == null) {
+                    throw new InvalidParameterException("INVALID.GROUP");
                 }
                 
-            } else if (msg.recipientType.equalsIgnoreCase("PUSH_BROADCAST")) {
-                broadcastNotification(message, msg);
-            }
-//            ----------------------------------------------------------------------------------------------------------------------------
-
-            // si un groupe, on rempli la liste de recipientLogin avec les logins recuperer depuis le ldap
-//            if (msg.recipientGroup != "undefined") {
-//               
-//                List<LdapUser> users = getUsersByGroup(msg.recipientGroup, msg.serviceKey);
-//                
-//                Iterator<LdapUser> iterator = users.iterator();
-//                while(iterator.hasNext())
-//                {
-//                    msg.recipientLogins.add(iterator.next().getId());
-//                }
-//            }
-//            ----------------------------------------------------------------------------------------------------------------------------
+                if (groupUsers.isEmpty()) {
+                    throw new CreateMessageException.EmptyGroup(msg.recipientGroup);
+                }
                 
+                for (LdapUser ldapUser : groupUsers) {
+                    String login = ldapUser.getId();
+                    msg.recipientLogins.add(login);
+		}
+                sendNotificationToLogins(message, msg);
+            }
+            
             return message.getId();
 
         }
@@ -162,47 +150,29 @@ public class SendNotificationManager  {
                 }
             });
         }
-        
-        public void broadcastNotification(final Message message, UINewMessage msg ) {
-            
-            JavaSender defaultJavaSender = new SenderClient.Builder("http://crista05.univ-lr.fr:8081/ag-push").build();
-            UnifiedMessage unifiedMessage = new UnifiedMessage.Builder()
-                    .pushApplicationId("4499bf1f-3fce-433f-a697-63229fa09b56")
-                    .masterSecret("3b343ec3-4965-4b7e-b2a3-e19437936c35")
-                    .alert(msg.content)
-                    .build();
-                    
-            defaultJavaSender.send(unifiedMessage, new MessageResponseCallback() {
-                @Override
-                public void onComplete(int statusCode) {
-                    //do cool stuff
-                    message.setStateAsEnum(MessageStatus.SENT);
-                    daoService.updateMessage(message);
-                }
                 
-                @Override
-                public void onError(Throwable throwable) {
-                    //bring out the bad news
-                    message.setStateAsEnum(MessageStatus.WS_ERROR);
-                    daoService.updateMessage(message);
-                }
-            });
-        }
-        
         public Message composeMessage(UINewMessage msg) throws CreateMessageException {
             Message message = createMessage(msg);
-            daoService.addMessage(message);
-            return message;
+            daoService.addMessage(message); 
+           return message;
 	}
         
         private Message createMessage(UINewMessage msg) throws CreateMessageException  {
             Service service = getService(msg.serviceKey);
             
-//            int recipients = msg.recipientLogins.size();
-            int recipients = 1;
+            Set<Recipient> recipients = getRecipients(msg, msg.serviceKey);
             BasicGroup groupRecipient = getGroupRecipient(msg.recipientGroup);
             BasicGroup groupSender = getGroupSender(msg.senderGroup);
-            MessageStatus messageStatus = getWorkflowState(recipients, groupSender, groupRecipient);
+            MessageStatus messageStatus = null;
+            
+            if(!msg.recipientType.equalsIgnoreCase("PUSH_BROADCAST"))
+            {
+                messageStatus = getWorkflowState(recipients.size(), groupSender, groupRecipient);
+            } else {
+                
+                messageStatus = getWorkflowState(1, groupSender, groupRecipient);
+            }
+            
             Person sender = getSender(msg.login);
 
             // test if customizeExpContent raises a CreateMessageException
@@ -215,8 +185,9 @@ public class SendNotificationManager  {
             message.setAccount(getAccount(msg.senderGroup));
             message.setService(service);
             message.setGroupSender(groupSender);
+            message.setRecipients(recipients);
             message.setGroupRecipient(groupRecipient);			
-            message.setStateAsEnum(messageStatus);				
+            message.setStateAsEnum(messageStatus);
             message.setSupervisors(mayGetSupervisorsOrNull(message));
             message.setDate(new Date());
             message.setType("PUSH");
@@ -238,48 +209,48 @@ public class SendNotificationManager  {
             }
 	}
         
-	/**
-	 * Used to send message in state waiting_for_sending.
-	 * @throws InsufficientQuotaException 
-	 * @throws HttpException 
-	 */
-	public void sendWaitingForSendingMessage() throws HttpException, InsufficientQuotaException {
-            // get all message ready to be sent
-            final List<Message> messageList = daoService.getMessagesByState(MessageStatus.WAITING_FOR_SENDING);
-            
-            for (Message message : messageList) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Start managment of message with id : " + message.getId());
-                }
-                // get the associated customized group
-                final CustomizedGroup cGroup = getCustomizedGroup(message.getGroupSender());
-
-                // send the customized messages
-                for (CustomizedMessage customizedMessage : getCustomizedMessages(message)) {
-                    sendCustomizedMessages(customizedMessage);
-                    cGroup.setConsumedSms(cGroup.getConsumedSms() + 1);
-                    daoService.updateCustomizedGroup(cGroup);
-                }
-
-                // update the message status in DB
-                message.setStateAsEnum(MessageStatus.SENT);
-
-                // force commit to database. do not allow rollback otherwise the message will be sent again!
-                daoService.updateMessage(message);
-
-                //Deal with the emails
-                if (message.getMail() != null) {
-                    sendMails(message);
-                }
-
-                daoService.updateMessage(message);
-
-                if (logger.isDebugEnabled()) {
-                    logger.debug("End of managment of message with id : " + message.getId());
-                }
-
-            }
-	}
+//	/**
+//	 * Used to send message in state waiting_for_sending.
+//	 * @throws InsufficientQuotaException 
+//	 * @throws HttpException 
+//	 */
+//	public void sendWaitingForSendingMessage() throws HttpException, InsufficientQuotaException {
+//            // get all message ready to be sent
+//            final List<Message> messageList = daoService.getMessagesByState(MessageStatus.WAITING_FOR_SENDING);
+//            
+//            for (Message message : messageList) {
+//                if (logger.isDebugEnabled()) {
+//                    logger.debug("Start managment of message with id : " + message.getId());
+//                }
+//                // get the associated customized group
+//                final CustomizedGroup cGroup = getCustomizedGroup(message.getGroupSender());
+//
+//                // send the customized messages
+//                for (CustomizedMessage customizedMessage : getCustomizedMessages(message)) {
+//                    sendCustomizedMessages(customizedMessage);
+//                    cGroup.setConsumedSms(cGroup.getConsumedSms() + 1);
+//                    daoService.updateCustomizedGroup(cGroup);
+//                }
+//
+//                // update the message status in DB
+//                message.setStateAsEnum(MessageStatus.SENT);
+//
+//                // force commit to database. do not allow rollback otherwise the message will be sent again!
+//                daoService.updateMessage(message);
+//
+//                //Deal with the emails
+//                if (message.getMail() != null) {
+//                    sendMails(message);
+//                }
+//
+//                daoService.updateMessage(message);
+//
+//                if (logger.isDebugEnabled()) {
+//                    logger.debug("End of managment of message with id : " + message.getId());
+//                }
+//
+//            }
+//	}
 
 	/**
 	 * send mail based on supervisors.
@@ -408,7 +379,8 @@ public class SendNotificationManager  {
             String idTemplate = mailToSend.getMailTemplate();
             if (idTemplate != null) {
                 logger.debug("create the mail to store TEMPLATE : " + idTemplate);
-                template = daoService.getTemplateById(Integer.parseInt(idTemplate));
+//                template = daoService.getTemplateById(Integer.parseInt(idTemplate));
+                template = daoService.getTemplateById(1);
             }
 
             Set<MailRecipient> mailRecipients = getMailRecipients(message, mailToSend);
@@ -431,7 +403,7 @@ public class SendNotificationManager  {
 
             if (mailToSend.getIsMailToRecipients()) {
                 final List<String> uids = new LinkedList<String>();
-                for (Recipient recipient : message.getRecipients()) {
+                for (Recipient recipient : message.getRecipients()) {                    
                         uids.add(recipient.getLogin());
                     }
                     // get all the ldap information in one request 
@@ -655,74 +627,74 @@ public class SendNotificationManager  {
 				return groupRecipient;
 	}
 
-	/**
-	 * Customized the messages.
-	 * @param message
-	 * @return
-	 */
-	private List<CustomizedMessage> getCustomizedMessages(final Message message) {
-            final Set<Recipient> recipients = message.getRecipients();
-            String contentWithoutExpTags = null;
-            try {
-                contentWithoutExpTags = customizer.customizeExpContent(message.getContent(), message.getGroupSender(), message.getSender());
-                if (logger.isDebugEnabled()) logger.debug("contentWithoutExpTags: " + contentWithoutExpTags);
-            } catch (CreateMessageException e) {
-                logger.error("discarding message with error " + e + " (this should not happen, the message should have been checked first!)");
-            }
+//	/**
+//	 * Customized the messages.
+//	 * @param message
+//	 * @return
+//	 */
+//	private List<CustomizedMessage> getCustomizedMessages(final Message message) {
+//            final Set<Recipient> recipients = message.getRecipients();
+//            String contentWithoutExpTags = null;
+//            try {
+//                contentWithoutExpTags = customizer.customizeExpContent(message.getContent(), message.getGroupSender(), message.getSender());
+//                if (logger.isDebugEnabled()) logger.debug("contentWithoutExpTags: " + contentWithoutExpTags);
+//            } catch (CreateMessageException e) {
+//                logger.error("discarding message with error " + e + " (this should not happen, the message should have been checked first!)");
+//            }
+//
+//            final List<CustomizedMessage> customizedMessageList = new ArrayList<CustomizedMessage>();
+//            if (contentWithoutExpTags != null) {
+//                for (Recipient recipient : recipients) {
+//                    CustomizedMessage c = getCustomizedMessage(message, contentWithoutExpTags, recipient);
+//                    customizedMessageList.add(c);
+//                }
+//            }
+//            return customizedMessageList;
+//	}
 
-            final List<CustomizedMessage> customizedMessageList = new ArrayList<CustomizedMessage>();
-            if (contentWithoutExpTags != null) {
-                for (Recipient recipient : recipients) {
-                    CustomizedMessage c = getCustomizedMessage(message, contentWithoutExpTags, recipient);
-                    customizedMessageList.add(c);
-                }
-            }
-            return customizedMessageList;
-	}
+//	private CustomizedMessage getCustomizedMessage(final Message message,
+//			final String contentWithoutExpTags, Recipient recipient) {
+//            //the message is customized with user informations
+//            String msgContent = customizer.customizeDestContent(contentWithoutExpTags, recipient.getLogin());
+//            if (msgContent.length() > notificationMaxSize) {
+//                msgContent = msgContent.substring(0, notificationMaxSize);
+//            }
+//            // create the final message with all data needed to send it
+//            final CustomizedMessage customizedMessage = new CustomizedMessage();
+//            customizedMessage.setMessageId(message.getId());
+//            customizedMessage.setSenderId(message.getSender().getId());
+//            customizedMessage.setGroupSenderId(message.getGroupSender().getId());
+//            customizedMessage.setServiceId(message.getService() != null ? message.getService().getId() : null);
+//            customizedMessage.setUserAccountLabel(message.getAccount().getLabel());
+//
+//            customizedMessage.setRecipiendPhoneNumber(recipient.getPhone());
+//            customizedMessage.setMessage(msgContent);
+//            return customizedMessage;
+//	}
 
-	private CustomizedMessage getCustomizedMessage(final Message message,
-			final String contentWithoutExpTags, Recipient recipient) {
-            //the message is customized with user informations
-            String msgContent = customizer.customizeDestContent(contentWithoutExpTags, recipient.getLogin());
-            if (msgContent.length() > notificationMaxSize) {
-                msgContent = msgContent.substring(0, notificationMaxSize);
-            }
-            // create the final message with all data needed to send it
-            final CustomizedMessage customizedMessage = new CustomizedMessage();
-            customizedMessage.setMessageId(message.getId());
-            customizedMessage.setSenderId(message.getSender().getId());
-            customizedMessage.setGroupSenderId(message.getGroupSender().getId());
-            customizedMessage.setServiceId(message.getService() != null ? message.getService().getId() : null);
-            customizedMessage.setUserAccountLabel(message.getAccount().getLabel());
-
-            customizedMessage.setRecipiendPhoneNumber(recipient.getPhone());
-            customizedMessage.setMessage(msgContent);
-            return customizedMessage;
-	}
-
-	/**
-	 * Send the customized message to the back office.
-	 * @param customizedMessage
-	 * @throws InsufficientQuotaException 
-	 * @throws HttpException 
-	 */
-	private void sendCustomizedMessages(final CustomizedMessage customizedMessage) throws HttpException, InsufficientQuotaException {
-            final Integer messageId = customizedMessage.getMessageId();
-            final Integer senderId = customizedMessage.getSenderId();
-            final Integer groupSenderId = customizedMessage.getGroupSenderId();
-            final Integer serviceId = customizedMessage.getServiceId();
-            final String userLabelAccount = customizedMessage.getUserAccountLabel();
-            final String message = customizedMessage.getMessage();
-            if (logger.isDebugEnabled()) {
-                    logger.debug("Sending to back office message with : " + 
-                                 " - message id = " + messageId + 
-                                 " - sender id = " + senderId + 
-                                 " - group sender id = " + groupSenderId + 
-                                 " - service id = " + serviceId + 
-                                 " - user label account = " + userLabelAccount + 
-                                 " - message = " + message);
-            }                
-	}
+//	/**
+//	 * Send the customized message to the back office.
+//	 * @param customizedMessage
+//	 * @throws InsufficientQuotaException 
+//	 * @throws HttpException 
+//	 */
+//	private void sendCustomizedMessages(final CustomizedMessage customizedMessage) throws HttpException, InsufficientQuotaException {
+//            final Integer messageId = customizedMessage.getMessageId();
+//            final Integer senderId = customizedMessage.getSenderId();
+//            final Integer groupSenderId = customizedMessage.getGroupSenderId();
+//            final Integer serviceId = customizedMessage.getServiceId();
+//            final String userLabelAccount = customizedMessage.getUserAccountLabel();
+//            final String message = customizedMessage.getMessage();
+//            if (logger.isDebugEnabled()) {
+//                    logger.debug("Sending to back office message with : " + 
+//                                 " - message id = " + messageId + 
+//                                 " - sender id = " + senderId + 
+//                                 " - group sender id = " + groupSenderId + 
+//                                 " - service id = " + serviceId + 
+//                                 " - user label account = " + userLabelAccount + 
+//                                 " - message = " + message);
+//            }                
+//	}
 
 
         /**
@@ -872,7 +844,60 @@ public class SendNotificationManager  {
             final LinkedList<A> l = new LinkedList<A>();
             l.add(e);
             return l;
-	}	
+	}
+        
+        private Set<Recipient> getRecipients(UINewMessage msg, String serviceKey) throws CreateMessageException.EmptyGroup {
+		Set<Recipient> recipients = new HashSet<Recipient>();
+		
+		if (msg.recipientLogins != null) addLoginsRecipients(recipients, msg.recipientLogins);
+		addGroupRecipients(recipients, msg.recipientGroup, serviceKey);
+		return recipients;
+	}
+        
+        private void addLoginsRecipients(Set<Recipient> recipients, List<String> logins) {
+            
+                List<LdapUser> users = ldapUtils.getUsersByUids(logins);
+                
+		for (LdapUser user : users) {
+                    Recipient recipient = new Recipient(null, "", user.getId());
+                    //daoService.addRecipient(recipient);
+                    recipients.add(recipient);
+		}
+	}
+        
+        
+        private Recipient getOrCreateRecipient(String login) {
+            
+            Recipient recipient = daoService.getRecipientByLogin(login);
+            // check if the recipient is already in the database. 
+//            Recipient recipient = null;
+            // id, phone and login
+            if(recipient == null) {
+            
+            recipient = new Recipient(null, "", login);
+//            daoService.addRecipient(recipient);
+            }
+            return recipient;
+	}
+        
+        private void addGroupRecipients(Set<Recipient> recipients, final String groupId, String serviceKey) throws CreateMessageException.EmptyGroup  {
+		if (groupId == null) return;
+
+				// Group users are search from the portal.
+				List<LdapUser> groupUsers = getUsersByGroup(groupId,serviceKey);
+				if (groupUsers == null)
+					throw new InvalidParameterException("INVALID.GROUP");
+				if (groupUsers.isEmpty())
+					throw new CreateMessageException.EmptyGroup(groupId);
+
+				//users are added to the recipient list.
+				for (LdapUser ldapUser : groupUsers) {
+					//String phone = ldapUtils.getUserPagerByUser(ldapUser);
+					String login = ldapUser.getId();
+                                        recipients.add(getOrCreateRecipient(login));
+				}
+	}
+        
 	
 	///////////////////////////////////
 	// setters

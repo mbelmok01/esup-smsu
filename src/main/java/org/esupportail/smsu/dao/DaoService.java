@@ -272,6 +272,12 @@ public interface DaoService extends Serializable {
 	 * @return the recipient.
 	 */
 	Recipient getRecipientByPhone(String strPhone);
+
+	/**
+	 * @param strLogin 
+	 * @return the recipient.
+	 */
+	Recipient getRecipientByLogin(String strLogin);
 	
 	/**
 	 * @param recipient

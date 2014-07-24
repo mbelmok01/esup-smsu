@@ -7,7 +7,7 @@ create table mail_recipient (MRC_ID integer not null auto_increment, MRC_ADDRESS
 create table message (MSG_ID integer not null auto_increment, MSG_DATE datetime not null, MSG_CONTENT varchar(255) not null, MSG_STATE varchar(32) not null, ACC_ID integer not null, TPL_ID integer, PER_ID integer not null, SVC_ID integer, MAIL_ID integer unique, BGR_SENDER_ID integer not null, BGR_RECIPIENT_ID integer, TYPE varchar(10) null, primary key (MSG_ID)) ENGINE=InnoDB;
 create table pending_member (MBR_LOGIN varchar(255) not null, MBR_VALIDATION_CODE varchar(8) not null, MBR_DATE_SUBSCRIPTION datetime not null, primary key (MBR_LOGIN)) ENGINE=InnoDB;
 create table person (PER_ID integer not null auto_increment, PER_LOGIN varchar(32) not null unique, primary key (PER_ID)) ENGINE=InnoDB;
-create table recipient (RCP_ID integer not null auto_increment, RCP_PHONE varchar(255) not null unique, RCP_LOGIN varchar(32), primary key (RCP_ID)) ENGINE=InnoDB;
+create table recipient (RCP_ID integer not null auto_increment, RCP_PHONE varchar(255) not null, RCP_LOGIN varchar(32), primary key (RCP_ID)) ENGINE=InnoDB;
 create table role (ROL_ID integer not null auto_increment, ROL_NAME varchar(32) not null unique, primary key (ROL_ID)) ENGINE=InnoDB;
 create table role_composition (ROL_ID integer not null, FCT_ID integer not null, primary key (ROL_ID, FCT_ID)) ENGINE=InnoDB;
 create table service (SVC_ID integer not null auto_increment, SVC_NAME varchar(32) not null unique, SVC_KEY varchar(16) not null unique, primary key (SVC_ID)) ENGINE=InnoDB;

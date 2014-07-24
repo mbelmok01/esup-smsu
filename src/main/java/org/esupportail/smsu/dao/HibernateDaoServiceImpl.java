@@ -574,6 +574,17 @@ public class HibernateDaoServiceImpl extends HibernateDaoSupport implements DaoS
 	}
 
 	/**
+	 * @see org.esupportail.smsu.dao.DaoService#getRecipientByLogin(java.lang.String)
+	 */
+	public Recipient getRecipientByLogin(final String strLogin) {
+		Session currentSession = getCurrentSession();
+		Criteria criteria = currentSession.createCriteria(Recipient.class);
+		criteria.add(Restrictions.eq(Recipient.PROP_LOGIN, strLogin));
+		Recipient recipient = (Recipient) criteria.uniqueResult();
+		return recipient;
+	}
+
+	/**
 	 * @see org.esupportail.smsu.dao.DaoService#addRecipient(org.esupportail.smsu.dao.beans.Recipient)
 	 */
 	public void addRecipient(final Recipient recipient) {

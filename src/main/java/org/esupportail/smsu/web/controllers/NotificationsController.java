@@ -64,7 +64,7 @@ public class NotificationsController {
 		recipientsValidation(msg, request, login);
 		userGroupValidation(msg.senderGroup, login);
 		contentValidation(msg.content);
-		if (msg.mailToSend != null) {
+		if (msg.mailToSend != null && (!msg.recipientType.equalsIgnoreCase("PUSH_BROADCAST"))) {
 			if (!request.isUserInRole("FCTN_SMS_AJOUT_MAIL"))
 				throw new InvalidParameterException("user " + login + " is not allowed to send mails");
 			mailsValidation(msg.mailToSend);

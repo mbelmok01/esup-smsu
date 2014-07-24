@@ -23,9 +23,14 @@
        >{{'MSG_MAIL_STATE'      | translate}}</dt><dd ng-show="msg.stateMail">{{'MSG_MAIL_STATE_' + msg.stateMail | translate}}</dd>
   </dl>
 
-  <dl class="dl-horizontal">
+  <dl class="dl-horizontal" ng-if="msg.recipients.length>0">
     <dt>{{'MSG_RECIPIENTS'      | translate}}</dt><dd>{{msg.recipients.join(", ")}}</dd>
   </dl>
+  
+  <dl class="dl-horizontal" ng-if="msg.recipients.length==0">
+    <dt>{{'MSG_RECIPIENTS'      | translate}}</dt><dd>Diffusion</dd>
+  </dl>
+  
 
   <dl class="dl-horizontal" ng-if="msg.statuses">
     <dt ng-show="msg.statuses"
@@ -35,3 +40,5 @@
     <dt ng-show="msg.statuses"
        >{{'MSG_INFO_NBR_BLACKLIST' | translate}}</dt><dd>{{msg.statuses.nbDestBlackList}}</dd>
   </dl>
+  
+  
