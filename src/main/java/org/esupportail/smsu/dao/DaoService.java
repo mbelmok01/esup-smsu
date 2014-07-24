@@ -279,6 +279,10 @@ public interface DaoService extends Serializable {
 	 */
 	Recipient getRecipientByLogin(String strLogin);
 	
+        /**
+	 * @param recipient
+	 */
+        Recipient getRecipient(Recipient recipient);
 	/**
 	 * @param recipient
 	 */

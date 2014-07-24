@@ -1,6 +1,6 @@
   Le {{msg.date | date:"dd/MM/yyyy à HH:mm"}}, {{msg.senderName}}
   {{msg.stateMessage === "SENT" ? "a envoyé" : "souhaite envoyer"}}
-  le message suivant {{msg.type === "PUSH" ? "" : "à"+ msg.nbRecipients + "personnes(s)."}}
+  le message suivant {{msg.type === "PUSH" ? "" : "à "+ msg.nbRecipients + " personnes(s)."}}
 
   <blockquote><p>
     <span ng-repeat='line in msg.content.split("\n") track by $index'>{{line}}<br></span>

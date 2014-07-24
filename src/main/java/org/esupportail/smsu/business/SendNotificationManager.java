@@ -46,6 +46,7 @@ import org.esupportail.smsu.web.beans.MailToSend;
 import org.esupportail.smsu.web.beans.UINewMessage;
 import org.esupportail.smsu.web.controllers.InvalidParameterException;
 import org.esupportail.smsuapi.exceptions.InsufficientQuotaException;
+import org.esupportail.smsuapi.services.client.SmsuapiWS;
 import org.esupportail.smsuapi.utils.HttpException;
 import org.jboss.aerogear.unifiedpush.JavaSender;
 import org.jboss.aerogear.unifiedpush.SenderClient;
@@ -214,43 +215,77 @@ public class SendNotificationManager  {
 //	 * @throws InsufficientQuotaException 
 //	 * @throws HttpException 
 //	 */
-//	public void sendWaitingForSendingMessage() throws HttpException, InsufficientQuotaException {
-//            // get all message ready to be sent
-//            final List<Message> messageList = daoService.getMessagesByState(MessageStatus.WAITING_FOR_SENDING);
-//            
-//            for (Message message : messageList) {
-//                if (logger.isDebugEnabled()) {
-//                    logger.debug("Start managment of message with id : " + message.getId());
-//                }
-//                // get the associated customized group
-//                final CustomizedGroup cGroup = getCustomizedGroup(message.getGroupSender());
-//
-//                // send the customized messages
-//                for (CustomizedMessage customizedMessage : getCustomizedMessages(message)) {
-//                    sendCustomizedMessages(customizedMessage);
-//                    cGroup.setConsumedSms(cGroup.getConsumedSms() + 1);
-//                    daoService.updateCustomizedGroup(cGroup);
-//                }
-//
+	public void sendWaitingForSendingMessage() throws HttpException, InsufficientQuotaException {
+            // get all message ready to be sent
+            final List<Message> messageList = daoService.getMessagesByState(MessageStatus.WAITING_FOR_SENDING);
+            
+            for (Message message : messageList) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Start managment of message with id : " + message.getId());
+                }
+                // get the associated customized group
+                final CustomizedGroup cGroup = getCustomizedGroup(message.getGroupSender());
+
+                // send the customized messages
+                for (CustomizedMessage customizedMessage : getCustomizedMessages(message)) {
+                    sendCustomizedMessages(customizedMessage);
+                    cGroup.setConsumedSms(cGroup.getConsumedSms() + 1);
+                    daoService.updateCustomizedGroup(cGroup);
+                }
+
 //                // update the message status in DB
 //                message.setStateAsEnum(MessageStatus.SENT);
-//
-//                // force commit to database. do not allow rollback otherwise the message will be sent again!
-//                daoService.updateMessage(message);
-//
-//                //Deal with the emails
-//                if (message.getMail() != null) {
-//                    sendMails(message);
-//                }
-//
-//                daoService.updateMessage(message);
-//
-//                if (logger.isDebugEnabled()) {
-//                    logger.debug("End of managment of message with id : " + message.getId());
-//                }
-//
-//            }
-//	}
+
+                // force commit to database. do not allow rollback otherwise the message will be sent again!
+                daoService.updateMessage(message);
+
+                //Deal with the emails
+                if (message.getMail() != null) {
+                    sendMails(message);
+                }
+
+                daoService.updateMessage(message);
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("End of managment of message with id : " + message.getId());
+                }
+
+            }
+	}
+        
+        
+        
+        /**
+	 * @param message
+	 * @param request 
+	 * @return null or an error message (key into i18n properties)
+	 * @throws CreateMessageException.WebService
+	 */
+	public void treatMessage(final Message message, HttpServletRequest request) throws CreateMessageException.WebService {
+		try {
+			if (message.getStateAsEnum().equals(MessageStatus.NO_RECIPIENT_FOUND))
+				;
+			else if (message.getStateAsEnum().equals(MessageStatus.WAITING_FOR_APPROVAL))
+				// envoi du mail
+				sendApprovalMailToSupervisors(message, request);
+			else 
+				maySendMessageInBackground(message);
+		} catch (SmsuapiWS.AuthenticationFailedException e) {
+			message.setStateAsEnum(MessageStatus.WS_ERROR);
+			daoService.updateMessage(message);
+			logger.error("Application unknown", e);
+			throw new CreateMessageException.WebServiceUnknownApplication(e);
+		} catch (InsufficientQuotaException e) {
+//			message.setStateAsEnum(MessageStatus.WS_QUOTA_ERROR);
+//			daoService.updateMessage(message);
+//			logger.error("Quota error", e);
+			//throw new CreateMessageException.WebServiceInsufficientQuota(e);
+		} catch (HttpException e) {
+			message.setStateAsEnum(MessageStatus.WS_ERROR);
+			daoService.updateMessage(message);
+			throw new CreateMessageException.BackOfficeUnreachable(e);
+		}
+	}
 
 	/**
 	 * send mail based on supervisors.
@@ -632,45 +667,45 @@ public class SendNotificationManager  {
 //	 * @param message
 //	 * @return
 //	 */
-//	private List<CustomizedMessage> getCustomizedMessages(final Message message) {
-//            final Set<Recipient> recipients = message.getRecipients();
-//            String contentWithoutExpTags = null;
-//            try {
-//                contentWithoutExpTags = customizer.customizeExpContent(message.getContent(), message.getGroupSender(), message.getSender());
-//                if (logger.isDebugEnabled()) logger.debug("contentWithoutExpTags: " + contentWithoutExpTags);
-//            } catch (CreateMessageException e) {
-//                logger.error("discarding message with error " + e + " (this should not happen, the message should have been checked first!)");
-//            }
-//
-//            final List<CustomizedMessage> customizedMessageList = new ArrayList<CustomizedMessage>();
-//            if (contentWithoutExpTags != null) {
-//                for (Recipient recipient : recipients) {
-//                    CustomizedMessage c = getCustomizedMessage(message, contentWithoutExpTags, recipient);
-//                    customizedMessageList.add(c);
-//                }
-//            }
-//            return customizedMessageList;
-//	}
+	private List<CustomizedMessage> getCustomizedMessages(final Message message) {
+            final Set<Recipient> recipients = message.getRecipients();
+            String contentWithoutExpTags = null;
+            try {
+                contentWithoutExpTags = customizer.customizeExpContent(message.getContent(), message.getGroupSender(), message.getSender());
+                if (logger.isDebugEnabled()) logger.debug("contentWithoutExpTags: " + contentWithoutExpTags);
+            } catch (CreateMessageException e) {
+                logger.error("discarding message with error " + e + " (this should not happen, the message should have been checked first!)");
+            }
 
-//	private CustomizedMessage getCustomizedMessage(final Message message,
-//			final String contentWithoutExpTags, Recipient recipient) {
-//            //the message is customized with user informations
-//            String msgContent = customizer.customizeDestContent(contentWithoutExpTags, recipient.getLogin());
-//            if (msgContent.length() > notificationMaxSize) {
-//                msgContent = msgContent.substring(0, notificationMaxSize);
-//            }
-//            // create the final message with all data needed to send it
-//            final CustomizedMessage customizedMessage = new CustomizedMessage();
-//            customizedMessage.setMessageId(message.getId());
-//            customizedMessage.setSenderId(message.getSender().getId());
-//            customizedMessage.setGroupSenderId(message.getGroupSender().getId());
-//            customizedMessage.setServiceId(message.getService() != null ? message.getService().getId() : null);
-//            customizedMessage.setUserAccountLabel(message.getAccount().getLabel());
-//
-//            customizedMessage.setRecipiendPhoneNumber(recipient.getPhone());
-//            customizedMessage.setMessage(msgContent);
-//            return customizedMessage;
-//	}
+            final List<CustomizedMessage> customizedMessageList = new ArrayList<CustomizedMessage>();
+            if (contentWithoutExpTags != null) {
+                for (Recipient recipient : recipients) {
+                    CustomizedMessage c = getCustomizedMessage(message, contentWithoutExpTags, recipient);
+                    customizedMessageList.add(c);
+                }
+            }
+            return customizedMessageList;
+	}
+
+	private CustomizedMessage getCustomizedMessage(final Message message,
+			final String contentWithoutExpTags, Recipient recipient) {
+            //the message is customized with user informations
+            String msgContent = customizer.customizeDestContent(contentWithoutExpTags, recipient.getLogin());
+            if (msgContent.length() > notificationMaxSize) {
+                msgContent = msgContent.substring(0, notificationMaxSize);
+            }
+            // create the final message with all data needed to send it
+            final CustomizedMessage customizedMessage = new CustomizedMessage();
+            customizedMessage.setMessageId(message.getId());
+            customizedMessage.setSenderId(message.getSender().getId());
+            customizedMessage.setGroupSenderId(message.getGroupSender().getId());
+            customizedMessage.setServiceId(message.getService() != null ? message.getService().getId() : null);
+            customizedMessage.setUserAccountLabel(message.getAccount().getLabel());
+
+            customizedMessage.setRecipiendPhoneNumber(recipient.getPhone());
+            customizedMessage.setMessage(msgContent);
+            return customizedMessage;
+	}
 
 //	/**
 //	 * Send the customized message to the back office.
@@ -678,23 +713,23 @@ public class SendNotificationManager  {
 //	 * @throws InsufficientQuotaException 
 //	 * @throws HttpException 
 //	 */
-//	private void sendCustomizedMessages(final CustomizedMessage customizedMessage) throws HttpException, InsufficientQuotaException {
-//            final Integer messageId = customizedMessage.getMessageId();
-//            final Integer senderId = customizedMessage.getSenderId();
-//            final Integer groupSenderId = customizedMessage.getGroupSenderId();
-//            final Integer serviceId = customizedMessage.getServiceId();
-//            final String userLabelAccount = customizedMessage.getUserAccountLabel();
-//            final String message = customizedMessage.getMessage();
-//            if (logger.isDebugEnabled()) {
-//                    logger.debug("Sending to back office message with : " + 
-//                                 " - message id = " + messageId + 
-//                                 " - sender id = " + senderId + 
-//                                 " - group sender id = " + groupSenderId + 
-//                                 " - service id = " + serviceId + 
-//                                 " - user label account = " + userLabelAccount + 
-//                                 " - message = " + message);
-//            }                
-//	}
+	private void sendCustomizedMessages(final CustomizedMessage customizedMessage) throws HttpException, InsufficientQuotaException {
+            final Integer messageId = customizedMessage.getMessageId();
+            final Integer senderId = customizedMessage.getSenderId();
+            final Integer groupSenderId = customizedMessage.getGroupSenderId();
+            final Integer serviceId = customizedMessage.getServiceId();
+            final String userLabelAccount = customizedMessage.getUserAccountLabel();
+            final String message = customizedMessage.getMessage();
+            if (logger.isDebugEnabled()) {
+                    logger.debug("Sending to back office message with : " + 
+                                 " - message id = " + messageId + 
+                                 " - sender id = " + senderId + 
+                                 " - group sender id = " + groupSenderId + 
+                                 " - service id = " + serviceId + 
+                                 " - user label account = " + userLabelAccount + 
+                                 " - message = " + message);
+            }                
+	}
 
 
         /**
@@ -859,7 +894,7 @@ public class SendNotificationManager  {
                 List<LdapUser> users = ldapUtils.getUsersByUids(logins);
                 
 		for (LdapUser user : users) {
-                    Recipient recipient = new Recipient(null, "", user.getId());
+                    Recipient recipient = new Recipient(null, null, user.getId());
                     //daoService.addRecipient(recipient);
                     recipients.add(recipient);
 		}
@@ -868,14 +903,13 @@ public class SendNotificationManager  {
         
         private Recipient getOrCreateRecipient(String login) {
             
-            Recipient recipient = daoService.getRecipientByLogin(login);
             // check if the recipient is already in the database. 
-//            Recipient recipient = null;
+            Recipient recipient = daoService.getRecipientByLogin(login);
+            
             // id, phone and login
             if(recipient == null) {
-            
-            recipient = new Recipient(null, "", login);
-//            daoService.addRecipient(recipient);
+                recipient = new Recipient(null, null, login);
+                daoService.addRecipient(recipient);
             }
             return recipient;
 	}

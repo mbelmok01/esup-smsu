@@ -23,6 +23,7 @@ public class ApprovalManager {
 	@Autowired private DaoService daoService;
 	@Autowired private MessageManager messageManager;
 	@Autowired private SendSmsManager sendSmsManager;
+        @Autowired private SendNotificationManager sendNotificationManager;
 
 	@SuppressWarnings("unused")
 	private final Logger logger = new LoggerImpl(getClass());
@@ -43,11 +44,19 @@ public class ApprovalManager {
 		checkCanApprove(message, currentUser);
 
 		sendSmsManager.sendMailMessageApprovedOrCanceled(message, newStatus, currentUser, request);
+                sendNotificationManager.sendMailMessageApprovedOrCanceled(message, newStatus, currentUser, request);
 		message.setStateAsEnum(newStatus);
 		if (newStatus.equals(MessageStatus.CANCEL)) {
 			daoService.updateMessage(message);
 		} else {
-			sendSmsManager.treatMessage(message, request);
+                    if(message.getType().equalsIgnoreCase("SMS")) {
+                        sendSmsManager.treatMessage(message, request);
+                        
+                    } else {
+                        
+                        sendNotificationManager.treatMessage(message, request);
+                    }
+			
 		}
 	}
 

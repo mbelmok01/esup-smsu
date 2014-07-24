@@ -185,11 +185,17 @@ myAppTest.run(function($http, $httpBackend, h, $rootScope) {
     }
     $httpBackend.whenGET(/rest.login/).respond(whenGET_rest_login);
     $httpBackend.whenJSONP(/rest.login/).respond(whenGET_rest_login);
-
     $httpBackend.whenGET(/rest.messages.groupLeaves/).respond(function () { return [200, userGroupLeaves()]; });
     $httpBackend.whenGET(/rest.messages.senders/).respond(function () { return [200, senders()]; });
     $httpBackend.whenGET(/rest.messages/).respond(get_list(db.msgs));
     $httpBackend.whenPOST(/rest.messages/).respond(function (method, url, data) {
+	var msg = createMsg(angular.fromJson(data));
+	db.msgs.unshift(msg);
+	return [200, msg];
+    });
+    
+    $httpBackend.whenGET(/rest.notifications/).respond(get_list(db.msgs));
+    $httpBackend.whenPOST(/rest.notifications/).respond(function (method, url, data) {
 	var msg = createMsg(angular.fromJson(data));
 	db.msgs.unshift(msg);
 	return [200, msg];

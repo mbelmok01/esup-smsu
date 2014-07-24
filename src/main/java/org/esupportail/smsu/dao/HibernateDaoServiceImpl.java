@@ -568,7 +568,7 @@ public class HibernateDaoServiceImpl extends HibernateDaoSupport implements DaoS
 	public Recipient getRecipientByPhone(final String strPhone) {
 		Session currentSession = getCurrentSession();
 		Criteria criteria = currentSession.createCriteria(Recipient.class);
-		criteria.add(Restrictions.eq(Recipient.PROP_PHONE, strPhone));
+                criteria.add(Restrictions.eq(Recipient.PROP_PHONE, strPhone));
 		Recipient recipient = (Recipient) criteria.uniqueResult();
 		return recipient;
 	}
@@ -583,7 +583,17 @@ public class HibernateDaoServiceImpl extends HibernateDaoSupport implements DaoS
 		Recipient recipient = (Recipient) criteria.uniqueResult();
 		return recipient;
 	}
-
+        
+        public Recipient getRecipient(Recipient recipient) {
+            Session currentSession = getCurrentSession();
+            Criteria criteria = currentSession.createCriteria(Recipient.class);
+            criteria.add(Restrictions.eq(Recipient.PROP_PHONE, recipient.getPhone()));
+            criteria.add(Restrictions.eq(Recipient.PROP_LOGIN, recipient.getLogin()));
+            Recipient rrecipient = (Recipient) criteria.uniqueResult();
+            return rrecipient;
+        }
+        
+        
 	/**
 	 * @see org.esupportail.smsu.dao.DaoService#addRecipient(org.esupportail.smsu.dao.beans.Recipient)
 	 */
