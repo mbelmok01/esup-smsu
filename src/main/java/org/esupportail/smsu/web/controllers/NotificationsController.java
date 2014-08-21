@@ -40,13 +40,13 @@ import org.springframework.util.StringUtils;
 public class NotificationsController {
     
     private Integer notificationMaxSize;
+    
     private final Logger logger = new LoggerImpl(getClass());
     
     @Autowired private SmtpServiceUtils smtpServiceUtils;
     @Autowired private MessageManager messageManager;
     @Autowired private SendNotificationManager sendNotificationManager;
 
-    
     
     @RolesAllowed({
         "FCTN_PUSH_ENVOI_LOGIN",
@@ -58,21 +58,21 @@ public class NotificationsController {
     @Produces("application/json")
     public UIMessage sendNotificationAction(UINewMessage msg, @Context HttpServletRequest request) throws CreateMessageException {
         String login = request.getRemoteUser();
-		if (login == null) throw new InvalidParameterException("SERVICE.CLIENT.NOTDEFINED");
-		msg.login = login;
-                
-		recipientsValidation(msg, request, login);
-		userGroupValidation(msg.senderGroup, login);
-		contentValidation(msg.content);
-		if (msg.mailToSend != null && (!msg.recipientType.equalsIgnoreCase("PUSH_BROADCAST"))) {
-			if (!request.isUserInRole("FCTN_SMS_AJOUT_MAIL"))
-				throw new InvalidParameterException("user " + login + " is not allowed to send mails");
-			mailsValidation(msg.mailToSend);
-		}
-                
-                int messageId = sendNotificationManager.sendMessage(msg, request);
-                
-		return messageManager.getUIMessage(messageId, null);
+        if (login == null) throw new InvalidParameterException("SERVICE.CLIENT.NOTDEFINED");
+        msg.login = login;
+
+        recipientsValidation(msg, request, login);
+        userGroupValidation(msg.senderGroup, login);
+        contentValidation(msg.content);
+        if (msg.mailToSend != null && (!msg.recipientType.equalsIgnoreCase("PUSH_BROADCAST"))) {
+            if (!request.isUserInRole("FCTN_SMS_AJOUT_MAIL"))
+                throw new InvalidParameterException("user " + login + " is not allowed to send mails");
+            mailsValidation(msg.mailToSend);
+        }
+
+        int messageId = sendNotificationManager.sendMessage(msg, request);
+
+        return messageManager.getUIMessage(messageId, null);
     }
     
     @GET
@@ -81,13 +81,13 @@ public class NotificationsController {
 			@QueryParam("sender") String senderLogin,
 			@QueryParam("maxResults") @DefaultValue("0" /* no limit */) int maxResults,
 			@Context HttpServletRequest request) {
-		senderLogin = allowedSender(request, senderLogin);
-		Date beginDate = null;
-		Date endDate = null;
-                String type = "PUSH";
-		List list = messageManager.getMessages(null, null, null, null, senderLogin, beginDate, endDate, maxResults, type);
-                
-                return list;
+            senderLogin = allowedSender(request, senderLogin);
+            Date beginDate = null;
+            Date endDate = null;
+            String type = "PUSH";
+            List list = messageManager.getMessages(null, null, null, null, senderLogin, beginDate, endDate, maxResults, type);
+
+            return list;
 	}
         
     

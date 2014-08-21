@@ -72,12 +72,9 @@ public class MessageManager {
 		return msg;
 	}
         
-        public Message getMessageType(final String messageType, String allowedSender) {		
-		Message msg = daoService.getMessageByType(messageType);
-		if (allowedSender != null && !allowedSender.equals(msg.getSender().getLogin())) {
-			throw new InvalidParameterException(allowedSender + " is not allowed to view message " + messageType);
-		}
-		return msg;
+         public Message getMessageType(final String messageType, String allowedSender) {		
+		 Message msg = daoService.getMessageByType(messageType);
+                return msg;
 	}
 
 	public UIMessage getUIMessage(final Integer messageId, String allowedSender) {
@@ -108,10 +105,10 @@ public class MessageManager {
 		r.id = mess.getId();
 		r.date = mess.getDate();
 		r.content = mess.getContent();
-                if(mess.getType() == "SMS")
-                {
+//                if(mess.getType() == "SMS")
+//                {
                     r.nbRecipients = mess.getRecipients().size();
-                }
+//                }
 		
 		r.recipients = convertRecipientsToUI(mess.getRecipients());
 		r.supervisors= convertToUI(mess.getSupervisors());

@@ -28,9 +28,8 @@
   <bean id="LoginController"		class="org.esupportail.smsu.web.controllers.LoginController" />
   <bean id="RolesController"		class="org.esupportail.smsu.web.controllers.RolesController" />
   <bean id="ServicesSmsuController" class="org.esupportail.smsu.web.controllers.ServicesSmsuController" />
-  <bean id="NotificationsController" class="org.esupportail.smsu.web.controllers.NotificationsController" >
-    <property name="notificationMaxSize" value="${notification.maxLength}" />
-    <!-- <property name="serverUri" value="${ups.uri}" /> -->
+  <bean id="NotificationsController" class="org.esupportail.smsu.web.controllers.NotificationsController" >    
+     <property name="notificationMaxSize" value="${push.maxLength}"/>
   </bean>
   
   <bean id="MembershipController"	class="org.esupportail.smsu.web.controllers.MembershipController">

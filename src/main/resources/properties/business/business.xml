@@ -41,13 +41,22 @@
 		<property name="userEmailAttribute" value="${ldap.emailAttribute}"/>
 	</bean>
 
-	<bean id="sendNotificationManager"
-		class="org.esupportail.smsu.business.SendNotificationManager">
-		<property name="defaultSupervisorLogin" value="${sms.defaultSupervisorLogin}"/>
-		<property name="notificationMaxSize" value="${notification.maxLength}"/>
-		<property name="defaultAccount" value="${sms.defaultAccount}"/>
-		<property name="userEmailAttribute" value="${ldap.emailAttribute}"/>
-		
+	<bean id="sendNotificationManager" class="org.esupportail.smsu.business.SendNotificationManager">
+            <property name="defaultSupervisorLogin" value="${sms.defaultSupervisorLogin}"/>
+            <property name="notificationMaxSize" value="${push.maxLength}"/>
+            <property name="rootServerURL" value="${push.rootServerURL}"/>
+            <property name="applicationId" value="${push.applicationId}"/>
+            <property name="masterSecret" value="${push.masterSecret}"/>
+            <property name="trustStorePath" value="${push.trustStorePath}"/>
+            <property name="trustStoreType" value="${push.trustStoreType}"/>
+            <property name="trustStorePassword" value="${push.trustStorePassword}"/>
+            <property name="proxyURL" value="${push.proxyURL}"/>
+            <property name="proxyPort" value="${push.proxyPort}"/>
+            <property name="proxyUser" value="${push.proxyUser}"/>
+            <property name="proxyPassword" value="${push.proxyPassword}"/>
+            <property name="proxyType" value="${push.proxyType}"/>
+            <property name="defaultAccount" value="${sms.defaultAccount}"/>
+            <property name="userEmailAttribute" value="${ldap.emailAttribute}"/>
 	</bean>
 	
 	<bean id="customizer"
