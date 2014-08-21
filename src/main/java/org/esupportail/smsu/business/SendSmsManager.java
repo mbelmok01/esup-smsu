@@ -602,18 +602,18 @@ public class SendSmsManager  {
 			recipient = new Recipient(null, phone, login);
 			daoService.addRecipient(recipient);
 		} else {
-                    if(recipient.getPhone().equalsIgnoreCase(""))
-                    {
+                    if(recipient.getPhone().equalsIgnoreCase("")) {
                         recipient.setPhone(phone);
                         daoService.updateRecipient(recipient);
+                        
+                        // the phone number may already exist, but the associated login may be NULL (or maybe old?)
+                        // we must ensure current login is associated to the phone number
+                        if (login != null) {
+                            recipient.setLogin(login);
+                            daoService.updateRecipient(recipient);
+                        }
                     }
-                    // the phone number may already exist, but the associated login may be NULL (or maybe old?)
-                    // we must ensure current login is associated to the phone number
-                    if (login != null) {
-                    	recipient.setLogin(login);
-                    	daoService.updateRecipient(recipient);
-                    }
-		}
+                }
 		return recipient;
 	}
 

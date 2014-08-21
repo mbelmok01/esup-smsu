@@ -50,9 +50,9 @@ INSERT INTO role_composition VALUES(1,18);
 INSERT INTO role_composition VALUES(1,19);
 
 -- Ajout du compte par defaut 
-INSERT INTO account VALUES (1, 'mbelmokh');
+INSERT INTO account VALUES (1, 'default_account');
 
 -- Ajout du compte par defaut 
-INSERT INTO customized_group VALUES (1, 1, 1, 'mbelmokh', 1, 1, 1);
+INSERT INTO customized_group VALUES (1, 1, 1, 'admin', 1, 1, 1);
 
 commit;

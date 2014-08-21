@@ -100,9 +100,7 @@ public interface DaoService extends Serializable {
 	 */
 	Message getMessageById(Integer id);
         
-        Message getMessageByType(String type);
-	
-	/**
+        /**
 	 * remove message content in db older than the specified date.
 	 * @param date
 	 */
@@ -280,10 +278,6 @@ public interface DaoService extends Serializable {
 	Recipient getRecipientByLogin(String strLogin);
 	
         /**
-	 * @param recipient
-	 */
-        Recipient getRecipient(Recipient recipient);
-	/**
 	 * @param recipient
 	 */
 	void addRecipient(Recipient recipient);

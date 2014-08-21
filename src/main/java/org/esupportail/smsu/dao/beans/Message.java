@@ -37,7 +37,6 @@ public class Message  implements Serializable {
         /**
 	 * Hibernate property for the type.
 	 */
-	
         public static final String PROP_TYPE = "Type";
 	/**
 	 * Hibernate property for the group sender.

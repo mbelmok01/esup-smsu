@@ -72,24 +72,13 @@ public class MessageManager {
 		return msg;
 	}
         
-         public Message getMessageType(final String messageType, String allowedSender) {		
-		 Message msg = daoService.getMessageByType(messageType);
-                return msg;
-	}
-
-	public UIMessage getUIMessage(final Integer messageId, String allowedSender) {
+        public UIMessage getUIMessage(final Integer messageId, String allowedSender) {
 		Message msg = getMessage(messageId, allowedSender);
 		if (msg == null) return null;
 		return convertToUI(Collections.singletonList(msg)).get(0);
 	}
 	
-        public UIMessage getUIMessage(final String messageType, String allowedSender) {
-		Message msg = getMessageType(messageType, allowedSender);
-		if (msg == null) return null;
-		return convertToUI(Collections.singletonList(msg)).get(0);
-	}
-        
-	public List<UIMessage> convertToUI(List<Message> messages) {
+        public List<UIMessage> convertToUI(List<Message> messages) {
 		Map<String, String> id2displayName = getIdToDisplayName(senderLogins(messages));
 
 		List<UIMessage> uimessages = new ArrayList<UIMessage>();
@@ -105,11 +94,7 @@ public class MessageManager {
 		r.id = mess.getId();
 		r.date = mess.getDate();
 		r.content = mess.getContent();
-//                if(mess.getType() == "SMS")
-//                {
-                    r.nbRecipients = mess.getRecipients().size();
-//                }
-		
+                r.nbRecipients = mess.getRecipients().size();
 		r.recipients = convertRecipientsToUI(mess.getRecipients());
 		r.supervisors= convertToUI(mess.getSupervisors());
 		r.senderLogin = mess.getSender().getLogin();

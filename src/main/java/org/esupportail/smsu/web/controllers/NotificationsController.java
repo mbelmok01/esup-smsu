@@ -90,14 +90,6 @@ public class NotificationsController {
             return list;
 	}
         
-    
-    @GET
-    @Produces("application/json")
-    @Path("/push")
-    public UIMessage getMessageType(@Context HttpServletRequest request) {          
-        return messageManager.getUIMessage("push", allowedSender(request));
-    }
-    
     private void recipientsValidation(UINewMessage msg, HttpServletRequest request, String login) {
         if (msg.recipientLogins != null)
             if (!request.isUserInRole("FCTN_PUSH_ENVOI_LOGIN"))
